@@ -4,7 +4,6 @@ import { Link, useLocation } from "react-router";
 // Assume these icons are imported from an icon library
 import {
   BoxCubeIcon,
-  CalenderIcon,
   ChevronDownIcon,
   GridIcon,
   HorizontaLDots,
@@ -16,7 +15,6 @@ import {
   UserCircleIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
-import SidebarWidget from "./SidebarWidget";
 
 type NavItem = {
   name: string;
@@ -29,13 +27,9 @@ const navItems: NavItem[] = [
   {
     icon: <GridIcon />,
     name: "Dashboard",
-    subItems: [{ name: "Ecommerce", path: "/", pro: false }],
+    path: "/",
   },
-  {
-    icon: <CalenderIcon />,
-    name: "Calendar",
-    path: "/calendar",
-  },
+
   {
     icon: <UserCircleIcon />,
     name: "User Profile",
@@ -174,16 +168,14 @@ const AppSidebar: React.FC = () => {
               } cursor-pointer ${
                 !isExpanded && !isHovered
                   ? "lg:justify-center"
-                  : "lg:justify-start"
-              }`}
-            >
+                  : "lg:justify-center"
+              }`}>
               <span
                 className={`menu-item-icon-size  ${
                   openSubmenu?.type === menuType && openSubmenu?.index === index
                     ? "menu-item-icon-active"
                     : "menu-item-icon-inactive"
-                }`}
-              >
+                }`}>
                 {nav.icon}
               </span>
               {(isExpanded || isHovered || isMobileOpen) && (
@@ -206,15 +198,13 @@ const AppSidebar: React.FC = () => {
                 to={nav.path}
                 className={`menu-item group ${
                   isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"
-                }`}
-              >
+                }`}>
                 <span
                   className={`menu-item-icon-size ${
                     isActive(nav.path)
                       ? "menu-item-icon-active"
                       : "menu-item-icon-inactive"
-                  }`}
-                >
+                  }`}>
                   {nav.icon}
                 </span>
                 {(isExpanded || isHovered || isMobileOpen) && (
@@ -234,8 +224,7 @@ const AppSidebar: React.FC = () => {
                   openSubmenu?.type === menuType && openSubmenu?.index === index
                     ? `${subMenuHeight[`${menuType}-${index}`]}px`
                     : "0px",
-              }}
-            >
+              }}>
               <ul className="mt-2 space-y-1 ml-9">
                 {nav.subItems.map((subItem) => (
                   <li key={subItem.name}>
@@ -245,8 +234,7 @@ const AppSidebar: React.FC = () => {
                         isActive(subItem.path)
                           ? "menu-dropdown-item-active"
                           : "menu-dropdown-item-inactive"
-                      }`}
-                    >
+                      }`}>
                       {subItem.name}
                       <span className="flex items-center gap-1 ml-auto">
                         {subItem.new && (
@@ -255,8 +243,7 @@ const AppSidebar: React.FC = () => {
                               isActive(subItem.path)
                                 ? "menu-dropdown-badge-active"
                                 : "menu-dropdown-badge-inactive"
-                            } menu-dropdown-badge`}
-                          >
+                            } menu-dropdown-badge`}>
                             new
                           </span>
                         )}
@@ -266,8 +253,7 @@ const AppSidebar: React.FC = () => {
                               isActive(subItem.path)
                                 ? "menu-dropdown-badge-active"
                                 : "menu-dropdown-badge-inactive"
-                            } menu-dropdown-badge`}
-                          >
+                            } menu-dropdown-badge`}>
                             pro
                           </span>
                         )}
@@ -296,37 +282,35 @@ const AppSidebar: React.FC = () => {
         ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
         lg:translate-x-0`}
       onMouseEnter={() => !isExpanded && setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
+      onMouseLeave={() => setIsHovered(false)}>
       <div
         className={`py-8 flex ${
-          !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
-        }`}
-      >
+          !isExpanded && !isHovered ? "lg:justify-center" : "justify-center"
+        }`}>
         <Link to="/">
           {isExpanded || isHovered || isMobileOpen ? (
-            <>
+            <div>
               <img
                 className="dark:hidden"
-                src="/images/logo/logo.svg"
+                src="/public/Logo/logo_last.png"
                 alt="Logo"
-                width={150}
-                height={40}
+                width={250}
+                height={100}
               />
               <img
                 className="hidden dark:block"
-                src="/images/logo/logo-dark.svg"
+                src="/public/Logo/logo_last.png"
                 alt="Logo"
-                width={150}
-                height={40}
+                width={250}
+                height={100}
               />
-            </>
+            </div>
           ) : (
             <img
-              src="/images/logo/logo-icon.svg"
+              src="/public/Logo/logo.svg"
               alt="Logo"
-              width={32}
-              height={32}
+              width={50}
+              height={40}
             />
           )}
         </Link>
@@ -340,8 +324,7 @@ const AppSidebar: React.FC = () => {
                   !isExpanded && !isHovered
                     ? "lg:justify-center"
                     : "justify-start"
-                }`}
-              >
+                }`}>
                 {isExpanded || isHovered || isMobileOpen ? (
                   "Menu"
                 ) : (
@@ -356,8 +339,7 @@ const AppSidebar: React.FC = () => {
                   !isExpanded && !isHovered
                     ? "lg:justify-center"
                     : "justify-start"
-                }`}
-              >
+                }`}>
                 {isExpanded || isHovered || isMobileOpen ? (
                   "Others"
                 ) : (
@@ -368,7 +350,6 @@ const AppSidebar: React.FC = () => {
             </div>
           </div>
         </nav>
-        {isExpanded || isHovered || isMobileOpen ? <SidebarWidget /> : null}
       </div>
     </aside>
   );
