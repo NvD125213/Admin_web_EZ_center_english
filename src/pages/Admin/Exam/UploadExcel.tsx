@@ -29,7 +29,6 @@ const UploadExcel = () => {
         toast.promise(promise, {
           loading: "Đang tải lên dữ liệu...",
           success: () => {
-            navigate("/admin/exam");
             return "Tải lên thành công!";
           },
           error: (err) => err?.response?.data?.error,
