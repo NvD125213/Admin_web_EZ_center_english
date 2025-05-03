@@ -9,8 +9,8 @@ interface InputProps {
   value?: string | number;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   className?: string;
-  min?: string;
-  max?: string;
+  min?: string | number;
+  max?: string | number;
   step?: number;
   disabled?: boolean;
   success?: boolean;
@@ -24,7 +24,6 @@ const Input: FC<InputProps> = ({
   name,
   placeholder,
   value,
-  onChange,
   className = "",
   min,
   max,
@@ -54,7 +53,6 @@ const Input: FC<InputProps> = ({
         name={name}
         placeholder={placeholder}
         value={value}
-        onChange={onChange}
         min={min}
         max={max}
         step={step}
@@ -70,8 +68,7 @@ const Input: FC<InputProps> = ({
               : success
               ? "text-success-500"
               : "text-gray-500"
-          }`}
-        >
+          }`}>
           {hint}
         </p>
       )}

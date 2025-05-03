@@ -166,7 +166,7 @@ export default function SignUpForm() {
                 <Link
                   to="/signin"
                   className="text-brand-500 hover:text-brand-600 dark:text-brand-400">
-                  Đăng ký
+                  Đăng nhập
                 </Link>
               </p>
             </div>

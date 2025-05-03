@@ -1,15 +1,126 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Checkbox from "../form/input/Checkbox";
 import Button from "../ui/button/Button";
 import { CiFacebook } from "react-icons/ci";
+import toast from "react-hot-toast";
+import * as yup from "yup";
+import { Modal, Box, Typography, TextField } from "@mui/material";
+import {
+  useLoginMutation,
+  useVerifyOtpMutation,
+} from "../../stores/auth/authApi";
+import { useDispatch } from "react-redux";
+import { setCredentials } from "../../stores/auth/authSlice";
+import { authServices } from "../../services/authServices";
+import { setUser } from "../../stores/auth/authSlice";
+
+interface VerifyOtpType {
+  userId: number;
+  otp: string;
+}
+
+interface FormErrors {
+  email?: string;
+  password?: string;
+  otp?: string;
+}
+
+// Schema validation
+const loginSchema = yup.object().shape({
+  email: yup
+    .string()
+    .email("Email không hợp lệ")
+    .required("Vui lòng nhập email"),
+  password: yup
+    .string()
+    .min(6, "Mật khẩu phải có ít nhất 6 ký tự")
+    .required("Vui lòng nhập mật khẩu"),
+});
+
+const otpSchema = yup.object().shape({
+  otp: yup
+    .string()
+    .required("Vui lòng nhập mã OTP")
+    .matches(/^\d{4}$/, "Mã OTP phải có 4 chữ số"),
+});
 
 export default function SignInForm() {
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
+  const [openModal, setOpenModal] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [userId, setUserId] = useState<number | null>(null);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const dispatch = useDispatch();
+  const [login, { isLoading, error }] = useLoginMutation();
+  const [verifyOtp] = useVerifyOtpMutation();
+
+  const handleLoginSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setErrors({});
+
+    const formData = new FormData(e.currentTarget);
+    const data = {
+      email: formData.get("email") as string,
+      password: formData.get("password") as string,
+    };
+
+    try {
+      await loginSchema.validate(data, { abortEarly: false });
+      const response = await login(data).unwrap();
+
+      setUserId(response.data.id);
+      setOpenModal(true);
+    } catch (err: any) {
+      if (err instanceof yup.ValidationError) {
+        const validationErrors: FormErrors = {};
+        err.inner.forEach((error) => {
+          if (error.path) {
+            validationErrors[error.path as keyof FormErrors] = error.message;
+          }
+        });
+        setErrors(validationErrors);
+      } else {
+        toast.error(err.data.message);
+      }
+    }
+  };
+
+  const handleOtpSubmit = async () => {
+    try {
+      await otpSchema.validate({ otp }, { abortEarly: false });
+      if (!userId) throw new Error("User ID không hợp lệ");
+      const otpData: VerifyOtpType = { userId, otp };
+      const response = await verifyOtp(otpData).unwrap();
+      if (response.status == "VERIFIED") {
+        dispatch(
+          setCredentials({
+            accessToken: response.access_token,
+            refreshToken: response.refresh_token,
+          })
+        );
+
+        // Đợi một chút để đảm bảo token đã được lưu
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        // Gọi API lấy thông tin user
+        const userResponse = await authServices.fetchUser();
+        dispatch(setUser(userResponse));
+
+        setOpenModal(false);
+        navigate("/");
+      }
+    } catch (err: any) {
+      toast.error(err.data?.message || "Có lỗi xảy ra");
+      console.log("Đây", err);
+    }
+  };
+
   return (
     <div className="flex flex-col flex-1">
       <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
@@ -65,13 +176,18 @@ export default function SignInForm() {
                 </span>
               </div>
             </div>
-            <form>
+            <form onSubmit={handleLoginSubmit}>
               <div className="space-y-6">
                 <div>
                   <Label>
                     Email <span className="text-error-500">*</span>{" "}
                   </Label>
-                  <Input placeholder="info@gmail.com" />
+                  <Input
+                    placeholder="info@gmail.com"
+                    name="email"
+                    error={!!errors.email}
+                    hint={errors.email}
+                  />
                 </div>
                 <div>
                   <Label>
@@ -79,8 +195,11 @@ export default function SignInForm() {
                   </Label>
                   <div className="relative">
                     <Input
+                      name="password"
                       type={showPassword ? "text" : "password"}
                       placeholder="Enter your password"
+                      error={!!errors.password}
+                      hint={errors.password}
                     />
                     <span
                       onClick={() => setShowPassword(!showPassword)}
@@ -107,8 +226,8 @@ export default function SignInForm() {
                   </Link>
                 </div>
                 <div>
-                  <Button className="w-full" size="sm">
-                    Đăng nhập
+                  <Button className="w-full" size="sm" disabled={isLoading}>
+                    {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
                   </Button>
                 </div>
               </div>
@@ -116,7 +235,7 @@ export default function SignInForm() {
 
             <div className="mt-5">
               <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
-                Không có tài khoản? {""}
+                Không có tài khoản?{" "}
                 <Link
                   to="/signup"
                   className="text-brand-500 hover:text-brand-600 dark:text-brand-400">
@@ -127,6 +246,62 @@ export default function SignInForm() {
           </div>
         </div>
       </div>
+
+      {/* OTP Modal */}
+      <Modal
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+        aria-labelledby="otp-modal-title"
+        aria-describedby="otp-modal-description">
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 400,
+            bgcolor: "background.paper",
+            borderRadius: 2,
+            boxShadow: 24,
+            p: 4,
+          }}>
+          <Typography
+            id="otp-modal-title"
+            variant="h6"
+            component="h2"
+            sx={{ mb: 2 }}>
+            Xác thực OTP
+          </Typography>
+          <Typography
+            id="otp-modal-description"
+            sx={{ mb: 3, color: "text.secondary" }}>
+            Vui lòng nhập mã OTP đã được gửi đến email của bạn
+          </Typography>
+          <div className="space-y-4">
+            <TextField
+              fullWidth
+              name="otp"
+              placeholder="Nhập mã OTP"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              error={!!errors.otp}
+              helperText={errors.otp}
+              sx={{ mb: 3 }}
+            />
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setOpenModal(false)}>
+                Hủy
+              </Button>
+              <Button size="sm" onClick={handleOtpSubmit}>
+                Xác nhận
+              </Button>
+            </div>
+          </div>
+        </Box>
+      </Modal>
     </div>
   );
 }

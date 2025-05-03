@@ -2,20 +2,33 @@ import ComponentCard from "../../common/ComponentCard";
 import { useDropzone } from "react-dropzone";
 // import Dropzone from "react-dropzone";
 
-const DropzoneComponent: React.FC = () => {
+interface DropzoneComponentProps {
+  onFileAccepted?: (file: File) => void;
+  accept?: Record<string, string[]>;
+  maxFiles?: number;
+}
+
+const DropzoneComponent: React.FC<DropzoneComponentProps> = ({
+  onFileAccepted,
+  accept = {
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+      ".xlsx",
+    ],
+    "application/vnd.ms-excel": [".xls"],
+  },
+  maxFiles = 1,
+}) => {
   const onDrop = (acceptedFiles: File[]) => {
-    console.log("Files dropped:", acceptedFiles);
-    // Handle file uploads here
+    const file = acceptedFiles[0];
+    if (file && onFileAccepted) {
+      onFileAccepted(file);
+    }
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: {
-      "image/png": [],
-      "image/jpeg": [],
-      "image/webp": [],
-      "image/svg+xml": [],
-    },
+    accept,
+    maxFiles,
   });
   return (
     <ComponentCard title="Dropzone">
@@ -29,8 +42,7 @@ const DropzoneComponent: React.FC = () => {
             : "border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900"
         }
       `}
-          id="demo-upload"
-        >
+          id="demo-upload">
           {/* Hidden Input */}
           <input {...getInputProps()} />
 
@@ -43,8 +55,7 @@ const DropzoneComponent: React.FC = () => {
                   width="29"
                   height="28"
                   viewBox="0 0 29 28"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
+                  xmlns="http://www.w3.org/2000/svg">
                   <path
                     fillRule="evenodd"
                     clipRule="evenodd"
@@ -56,11 +67,13 @@ const DropzoneComponent: React.FC = () => {
 
             {/* Text Content */}
             <h4 className="mb-3 font-semibold text-gray-800 text-theme-xl dark:text-white/90">
-              {isDragActive ? "Drop Files Here" : "Drag & Drop Files Here"}
+              {isDragActive
+                ? "Drop Excel File Here"
+                : "Drag & Drop Excel File Here"}
             </h4>
 
             <span className=" text-center mb-5 block w-full max-w-[290px] text-sm text-gray-700 dark:text-gray-400">
-              Drag and drop your PNG, JPG, WebP, SVG images here or browse
+              Thêm vào file excel
             </span>
 
             <span className="font-medium underline text-theme-sm text-brand-500">
