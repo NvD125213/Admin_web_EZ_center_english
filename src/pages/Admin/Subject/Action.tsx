@@ -1,9 +1,12 @@
 import { useEffect } from "react";
 import { SubjectType } from "../../../types/subject";
 import CommonModal from "../../../components/common/Modal";
-import { subjectServices } from "../../../services/subjectServices";
 import { useForm } from "react-hook-form";
 import { toast } from "react-hot-toast";
+import {
+  useCreateSubjectMutation,
+  useUpdateSubjectMutation,
+} from "../../../services/subjectServices";
 
 interface SubjectModalProps {
   isOpen: boolean;
@@ -18,6 +21,9 @@ const SubjectAction: React.FC<SubjectModalProps> = ({
   onCloseModal,
   onSuccess,
 }) => {
+  const [createSubject] = useCreateSubjectMutation();
+  const [updateSubject] = useUpdateSubjectMutation();
+
   const {
     register,
     handleSubmit,
@@ -32,43 +38,38 @@ const SubjectAction: React.FC<SubjectModalProps> = ({
     if (data) {
       reset({
         name: data.name,
-        skillType: data.skillType, // Đảm bảo skillType là chuỗi
+        skillType: data.skillType,
       });
     } else {
       reset({ name: "", skillType: "1" });
     }
   }, [data, reset, onCloseModal]);
+
   const handleClose = () => {
     onCloseModal();
-    reset({ name: "", skillType: "1" }); // Gọi reset khi đóng modal
+    reset({ name: "", skillType: "1" });
   };
 
   const sendRequest = async (formData: SubjectType) => {
     try {
       const payload = {
         ...formData,
-        skillType: Number(formData.skillType), // Đảm bảo skillType là số
+        skillType: Number(formData.skillType),
       };
 
       if (data?.id) {
-        console.log(">>", payload);
-
-        const res = await subjectServices.update({ ...payload, id: data.id });
-        if (res.status === 200) {
-          toast.success("Cập nhật chủ đề thành công!");
-        }
+        await updateSubject({ id: data.id, data: payload }).unwrap();
+        toast.success("Cập nhật chủ đề thành công!");
       } else {
-        const res = await subjectServices.create(payload);
-        if (res.status === 201) {
-          toast.success("Tạo chủ đề thành công!");
-        }
+        await createSubject(payload).unwrap();
+        toast.success("Tạo chủ đề thành công!");
       }
       onSuccess();
       onCloseModal();
     } catch (error: any) {
       console.error("Lỗi khi gửi yêu cầu:", error);
       onCloseModal();
-      toast.error(error.response?.data?.error || "Đã xảy ra lỗi");
+      toast.error(error.data?.error || "Đã xảy ra lỗi");
     }
   };
 
@@ -102,7 +103,7 @@ const SubjectAction: React.FC<SubjectModalProps> = ({
             { label: "Listening and Reading", value: "1" },
             { label: "Speaking and Writing", value: "2" },
           ],
-          register: register("skillType"), // Đăng ký skillType
+          register: register("skillType"),
           error: errors.skillType?.message,
         },
       ]}

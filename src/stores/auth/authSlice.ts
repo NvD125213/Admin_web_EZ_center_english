@@ -1,23 +1,18 @@
-// src/features/auth/authSlice.ts
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import Cookies from "js-cookie";
-import { UserType } from "../../types";
-import { authApi } from "./authApi";
+import { removeAccessToken, removeRefreshToken } from "../../utils/cookies";
+import { UserType } from "../../types/auth";
 
 interface AuthState {
   user: UserType | null;
   accessToken: string | null;
   refreshToken: string | null;
-  isAuthenticated: boolean;
-  loading: boolean;
 }
 
 const initialState: AuthState = {
-  accessToken: null,
-  refreshToken: null,
   user: null,
-  isAuthenticated: false,
-  loading: false,
+  accessToken: Cookies.get("accessToken") || null,
+  refreshToken: Cookies.get("refreshToken") || null,
 };
 
 const authSlice = createSlice({
@@ -26,44 +21,26 @@ const authSlice = createSlice({
   reducers: {
     setCredentials: (
       state,
-      action: PayloadAction<{ accessToken: string; refreshToken: string }>
+      action: PayloadAction<{ accessToken: string; refreshToken?: string }>
     ) => {
       state.accessToken = action.payload.accessToken;
-      state.refreshToken = action.payload.refreshToken;
-      Cookies.set("access_token", action.payload.accessToken);
-      Cookies.set("refresh_token", action.payload.refreshToken);
+      if (action.payload.refreshToken) {
+        state.refreshToken = action.payload.refreshToken;
+      }
+    },
+    setUser: (state, action: PayloadAction<UserType | null>) => {
+      state.user = action.payload;
     },
     logout: (state) => {
+      state.user = null;
       state.accessToken = null;
       state.refreshToken = null;
-      Cookies.remove("access_token");
-      Cookies.remove("refresh_token");
+      removeAccessToken();
+      removeRefreshToken();
     },
-    setUser: (state, action) => {
-      state.user = action.payload;
-      state.isAuthenticated = true;
-    },
-  },
-  extraReducers: (builder) => {
-    builder
-      .addMatcher(
-        authApi.endpoints.getCurrentUser.matchFulfilled,
-        (state, action) => {
-          state.user = action.payload;
-          state.isAuthenticated = true;
-          state.loading = false;
-        }
-      )
-      .addMatcher(authApi.endpoints.getCurrentUser.matchPending, (state) => {
-        state.loading = true;
-      })
-      .addMatcher(authApi.endpoints.getCurrentUser.matchRejected, (state) => {
-        state.loading = false;
-        state.isAuthenticated = false;
-      });
   },
 });
 
-export const { setCredentials, logout, setUser } = authSlice.actions;
+export const { setCredentials, setUser, logout } = authSlice.actions;
 
 export default authSlice.reducer;

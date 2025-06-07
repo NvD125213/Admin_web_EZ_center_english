@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { Link, useLocation } from "react-router";
 
 // Assume these icons are imported from an icon library
@@ -10,8 +10,16 @@ import {
   UserCircleIcon,
 } from "../icons";
 import { MdOutlineSubject } from "react-icons/md";
-
+import { PiArticleNyTimesBold } from "react-icons/pi";
+import { VscLayoutMenubar } from "react-icons/vsc";
+import { SiCoursera } from "react-icons/si";
+import { PiChalkboardTeacher } from "react-icons/pi";
+import { MdAddModerator } from "react-icons/md";
+import { MdOutlineAddHomeWork } from "react-icons/md";
+import { SiGoogleclassroom } from "react-icons/si";
 import { useSidebar } from "../context/SidebarContext";
+import { useSelector } from "react-redux";
+import { RootState } from "../stores";
 
 type NavItem = {
   name: string;
@@ -26,10 +34,9 @@ const navItems: NavItem[] = [
     name: "Dashboard",
     path: "/",
   },
-
   {
     icon: <UserCircleIcon />,
-    name: "User Profile",
+    name: "Profile",
     path: "/profile",
   },
   {
@@ -39,6 +46,40 @@ const navItems: NavItem[] = [
       { name: "Chủ đề", path: "/subject", pro: false },
       { name: "Bài thi", path: "/exam", pro: false },
       { name: "Upload Excel", path: "/upload-file", pro: false },
+    ],
+  },
+  {
+    icon: <VscLayoutMenubar />,
+    name: "Quản lý menu",
+    path: "/menu",
+  },
+  {
+    icon: <PiArticleNyTimesBold />,
+    name: "Quản lý bài viết",
+    path: "/blog",
+  },
+  {
+    icon: <SiCoursera />,
+    name: "Quản lý khóa học",
+    path: "/course",
+  },
+  {
+    icon: <MdAddModerator />,
+    name: "Quản lý nhân viên",
+    path: "/staff",
+  },
+  {
+    icon: <PiChalkboardTeacher />,
+    name: "Quản lý giáo viên",
+    path: "/teacher",
+  },
+  {
+    icon: <SiGoogleclassroom />,
+    name: "Quản lý lớp học",
+    subItems: [
+      { name: "Danh sách lớp học", path: "/classroom", pro: false },
+      { name: "Danh sách lịch dạy", path: "/schedule", pro: false },
+      { name: "Thời khóa biểu", path: "/timetable", pro: false },
     ],
   },
 ];
@@ -52,11 +93,17 @@ const othersItems: NavItem[] = [
       { name: "Chân trang", path: "/bar-chart", pro: false },
     ],
   },
+  {
+    icon: <MdOutlineAddHomeWork />,
+    name: "Danh sách cơ sở",
+    path: "/address",
+  },
 ];
 
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const location = useLocation();
+  const user = useSelector((state: RootState) => state.auth.user);
 
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "others";
@@ -72,6 +119,23 @@ const AppSidebar: React.FC = () => {
     (path: string) => location.pathname === path,
     [location.pathname]
   );
+  const checkPosition = user?.staffs?.map((item) => item) ?? [];
+
+  const filteredNavItems = useMemo(() => {
+    if (checkPosition[0]?.position === "writer") {
+      return navItems.filter(
+        (item) => item.name === "Quản lý bài viết" || item.name === "Dashboard"
+      );
+    }
+    return navItems;
+  }, [user]);
+
+  const filteredOthersItems = useMemo(() => {
+    if (checkPosition[0]?.position === "writer") {
+      return [];
+    }
+    return othersItems;
+  }, [user]);
 
   useEffect(() => {
     let submenuMatched = false;
@@ -299,23 +363,25 @@ const AppSidebar: React.FC = () => {
                   <HorizontaLDots className="size-6" />
                 )}
               </h2>
-              {renderMenuItems(navItems, "main")}
+              {renderMenuItems(filteredNavItems, "main")}
             </div>
-            <div className="">
-              <h2
-                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
-                }`}>
-                {isExpanded || isHovered || isMobileOpen ? (
-                  "Others"
-                ) : (
-                  <HorizontaLDots />
-                )}
-              </h2>
-              {renderMenuItems(othersItems, "others")}
-            </div>
+            {filteredOthersItems.length > 0 && (
+              <div className="">
+                <h2
+                  className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
+                    !isExpanded && !isHovered
+                      ? "lg:justify-center"
+                      : "justify-start"
+                  }`}>
+                  {isExpanded || isHovered || isMobileOpen ? (
+                    "Others"
+                  ) : (
+                    <HorizontaLDots />
+                  )}
+                </h2>
+                {renderMenuItems(filteredOthersItems, "others")}
+              </div>
+            )}
           </div>
         </nav>
       </div>

@@ -39,11 +39,11 @@ axiosInstance.interceptors.response.use(
         const { data } = await axios.post(
           "http://localhost:3000/api/auth/refresh-token",
           {
-            refreshToken: Cookies.get("refresh_token"),
+            refreshToken: Cookies.get("refreshToken"),
           }
         );
 
-        const refreshToken = Cookies.get("refresh_token");
+        const refreshToken = Cookies.get("refreshToken");
         if (!refreshToken) {
           store.dispatch(logout());
           return Promise.reject({

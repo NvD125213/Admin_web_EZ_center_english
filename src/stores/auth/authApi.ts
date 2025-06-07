@@ -1,64 +1,142 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
-import { AUTH_API } from "../../constants";
-import { baseQuery } from "../baseQuery";
+import { baseQueryWithReauth } from "../../services/baseQuery";
+import { setCredentials } from "./authSlice";
+import Cookies from "js-cookie";
+
+interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+interface LoginResponse {
+  status: string;
+  message: string;
+  access_token: string;
+  refresh_token: string;
+  data: {
+    id: number;
+    expiredAt: string;
+  };
+}
+
+interface UserResponse {
+  id: string;
+  full_name: string;
+  phone_number: string;
+  email: string;
+  role: number;
+}
+
+interface RefreshTokenRequest {
+  refresh_token: string;
+}
+
+interface VerifyOtpRequest {
+  otp: string;
+  userId: number;
+}
+
+const setAuthCookies = (accessToken: string, refreshToken?: string) => {
+  Cookies.set("accessToken", accessToken);
+  if (refreshToken) {
+    Cookies.set("refreshToken", refreshToken);
+  }
+};
 
 export const authApi = createApi({
   reducerPath: "authApi",
-  baseQuery,
+  baseQuery: baseQueryWithReauth(),
+  tagTypes: ["User"],
   endpoints: (builder) => ({
-    login: builder.mutation({
-      query: (body) => ({
-        url: AUTH_API.LOGIN,
+    login: builder.mutation<LoginResponse, LoginRequest>({
+      query: (credentials) => ({
+        url: "/auth/login",
         method: "POST",
-        body,
+        body: credentials,
       }),
+      async onQueryStarted(_, { queryFulfilled, dispatch }) {
+        try {
+          const { data } = await queryFulfilled;
+          setAuthCookies(data.access_token, data.refresh_token);
+          dispatch(
+            setCredentials({
+              accessToken: data.access_token,
+              refreshToken: data.refresh_token,
+            })
+          );
+        } catch (error) {
+          console.log(error);
+        }
+      },
     }),
 
-    register: builder.mutation({
-      query: (body) => ({
-        url: AUTH_API.REGISTER,
-        method: "POST",
-        body,
-      }),
-    }),
-
-    refreshToken: builder.mutation({
-      query: (body) => ({
-        url: AUTH_API.REFRESH_TOKEN,
-        method: "POST",
-        body,
-      }),
-    }),
-
-    verifyOtp: builder.mutation({
-      query: (body) => ({
-        url: AUTH_API.VERIFY_OTP,
-        method: "POST",
-        body,
-      }),
-    }),
-
-    getCurrentUser: builder.query<any, void>({
+    logout: builder.mutation<void, void>({
       query: () => ({
-        url: AUTH_API.GET_CURRENT_USER,
+        url: "/auth/logout",
+        method: "POST",
+      }),
+      async onQueryStarted(_, { queryFulfilled, dispatch }) {
+        try {
+          await queryFulfilled;
+          dispatch(setCredentials({ accessToken: "", refreshToken: "" }));
+        } catch (error) {
+          console.log(error);
+          dispatch(setCredentials({ accessToken: "", refreshToken: "" }));
+        }
+      },
+    }),
+
+    fetchUser: builder.query<UserResponse, void>({
+      query: () => ({
+        url: "/auth/current-user",
         method: "GET",
       }),
+
+      providesTags: ["User"],
     }),
-    logout: builder.mutation({
-      query: (body) => ({
-        url: AUTH_API.LOGOUT,
+
+    refreshToken: builder.mutation<LoginResponse, RefreshTokenRequest>({
+      query: (data) => ({
+        url: "/auth/refresh-token",
         method: "POST",
-        body,
+        body: data.refresh_token,
+      }),
+      async onQueryStarted(_, { queryFulfilled, dispatch }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(
+            setCredentials({
+              accessToken: data.access_token,
+            })
+          );
+        } catch (error) {
+          console.log(error);
+        }
+      },
+    }),
+
+    verifyOtp: builder.mutation<any, VerifyOtpRequest>({
+      query: (data) => ({
+        url: "/auth/verify-otp",
+        method: "POST",
+        body: data,
+      }),
+    }),
+
+    resendVerifyOtp: builder.mutation<any, void>({
+      query: () => ({
+        url: "/auth/verify-otp",
+        method: "POST",
       }),
     }),
   }),
 });
 
 export const {
-  useRegisterMutation,
   useLoginMutation,
+  useLogoutMutation,
+  useFetchUserQuery,
   useRefreshTokenMutation,
   useVerifyOtpMutation,
-  useGetCurrentUserQuery,
-  useLogoutMutation,
+  useResendVerifyOtpMutation,
 } = authApi;

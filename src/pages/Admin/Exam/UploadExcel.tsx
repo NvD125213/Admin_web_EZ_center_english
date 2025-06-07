@@ -2,10 +2,10 @@ import DropzoneComponent from "../../../components/form/form-elements/DropZone";
 import { readExcelFile } from "../../../helper/ExcelReader";
 import { questionServices } from "../../../services/questionServices";
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router";
+// import { useNavigate } from "react-router";
 
 const UploadExcel = () => {
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   const handleExcelData = async (
     error: Error | null,

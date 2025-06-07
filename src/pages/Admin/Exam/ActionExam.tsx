@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
-import { SubjectType, ExamType } from "../../../types";
+import { ExamType } from "../../../types";
 import CommonModal from "../../../components/common/Modal";
-import { subjectServices } from "../../../services/subjectServices";
+import { useGetSubjectsQuery } from "../../../services/subjectServices";
 import { useForm } from "react-hook-form";
 import { toast } from "react-hot-toast";
 import { examServices } from "../../../services/examServices";
-import useSelectOptionData from "../../../hooks/useSelectOption";
 
 interface ExamModalProps {
   isOpen: boolean;
@@ -29,10 +28,12 @@ const ExamAction: React.FC<ExamModalProps> = ({
   } = useForm<ExamType>({
     defaultValues: { name: "", subject_id: "1" },
   });
-  const { data: subjects } = useSelectOptionData<SubjectType>({
-    service: () => subjectServices.get({ all: true }), // Giả sử service trả về mảng hoặc object
-  });
+
+  const { data: subjectsData } = useGetSubjectsQuery({ all: true });
+  const subjects = subjectsData?.data || [];
+
   const [errorDetail, setErrorDetail] = useState("");
+
   useEffect(() => {
     if (data) {
       reset({
@@ -43,6 +44,7 @@ const ExamAction: React.FC<ExamModalProps> = ({
       reset({ name: "", subject_id: "1" });
     }
   }, [data, reset, onCloseModal]);
+
   const handleClose = () => {
     onCloseModal();
     reset({ name: "", subject_id: "1" }); // Gọi reset khi đóng modal
@@ -103,13 +105,11 @@ const ExamAction: React.FC<ExamModalProps> = ({
           label: "Chủ đề bài thi",
           type: "select",
           control: control,
-          options: [
-            ...(subjects?.map((sub) => ({
-              label: sub.name,
-              value: String(sub.id),
-              key: sub.id,
-            })) || []),
-          ],
+          options: subjects.map((sub) => ({
+            label: sub.name,
+            value: String(sub.id),
+            key: sub.id,
+          })),
           register: register("subject_id"),
           error: errors.subject_id?.message,
         },

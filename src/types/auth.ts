@@ -9,10 +9,12 @@ export interface AuthType {
 }
 
 export interface UserType {
+  id?: number;
   full_name?: string;
   email?: string;
   phone_number?: string;
   password?: string;
   googleId?: string;
   role?: number;
+  staffs?: { position: string; photo?: string }[];
 }

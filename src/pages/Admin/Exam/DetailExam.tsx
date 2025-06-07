@@ -26,6 +26,7 @@ import { examServices } from "../../../services/examServices";
 import { partServices } from "../../../services/partServices";
 import { IoIosAdd } from "react-icons/io";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
+import { IoArrowBack } from "react-icons/io5";
 import ActionDetailExam from "./ActionDetailExam";
 
 interface Question {
@@ -183,7 +184,7 @@ const QuestionItem = memo(
             </Typography>
             <div className="grid grid-cols-1 gap-2">
               {Object.entries(question.option as Record<string, string>).map(
-                ([key, value], index) => (
+                ([key, value]) => (
                   <div
                     key={key}
                     className={`p-3 rounded-lg transition-colors ${
@@ -340,7 +341,16 @@ const DetailExam = () => {
 
   return (
     <>
-      <PageBreadcrumb pageTitle={`Chi tiết bài thi`} />
+      <div className="flex items-center justify-between mb-4">
+        <PageBreadcrumb pageTitle={`Chi tiết bài thi`} />
+        <Button
+          variant="outlined"
+          startIcon={<IoArrowBack />}
+          onClick={() => navigate("/exam")}
+          className="dark:text-white dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800">
+          Quay lại
+        </Button>
+      </div>
       <span className="block text-sm text-gray-600 mb-2">
         {`${part?.name} - Bài thi ${exam?.name}`}
       </span>

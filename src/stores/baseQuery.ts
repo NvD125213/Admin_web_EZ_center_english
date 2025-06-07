@@ -9,7 +9,7 @@ export const baseQuery = fetchBaseQuery({
     const token = (getState() as RootState).auth.accessToken;
 
     // If not in Redux state, try to get from cookies
-    const accessToken = token || Cookies.get("access_token");
+    const accessToken = token || Cookies.get("accessToken");
 
     if (accessToken) {
       headers.set("Authorization", `Bearer ${accessToken}`);

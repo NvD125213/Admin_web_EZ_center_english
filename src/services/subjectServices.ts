@@ -1,31 +1,87 @@
-import { axiosInstance } from "../utils/http";
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { SubjectType } from "../types/subject";
-export const subjectServices = {
-  get: async (
-    options: { all?: boolean; page?: number; limit?: number } = {}
-  ) => {
-    const params: any = {};
+import { baseQueryWithReauth } from "./baseQuery";
 
-    if (options.all) {
-      params.all = true;
-    } else {
-      params.page = options.page || 1;
-      params.limit = options.limit || 10;
-    }
+export interface SubjectResponse {
+  data: SubjectType[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
 
-    const response = await axiosInstance.get("/subject", { params });
-    return response.data;
-  },
-  create: async (data: SubjectType) => {
-    const res = await axiosInstance.post("/subject", data);
-    return res;
-  },
-  update: async (data: SubjectType) => {
-    const res = await axiosInstance.put(`/subject/${data.id}`, data);
-    return res;
-  },
-  delete: async (id: any) => {
-    const res = await axiosInstance.delete(`/subject/${id}`);
-    return res;
-  },
-};
+interface SubjectQueryParams {
+  page?: number;
+  limit?: number;
+  all?: boolean;
+  sort_by?: string;
+  sort_order?: "asc" | "desc";
+  search?: string;
+}
+
+interface CreateSubjectRequest {
+  name: string;
+  [key: string]: any;
+}
+
+interface UpdateSubjectRequest extends Partial<CreateSubjectRequest> {}
+
+export const subjectApi = createApi({
+  reducerPath: "subjectApi",
+  baseQuery: baseQueryWithReauth(),
+  tagTypes: ["Subject"],
+  endpoints: (builder) => ({
+    getSubjects: builder.query<SubjectResponse, SubjectQueryParams>({
+      query: (params) => ({
+        url: "/subject",
+        method: "GET",
+        params,
+      }),
+      providesTags: ["Subject"],
+    }),
+    getSubjectById: builder.query<SubjectType, number>({
+      query: (id) => ({
+        url: `/subject/${id}`,
+        method: "GET",
+      }),
+      providesTags: (result, error, id) => [{ type: "Subject", id }],
+    }),
+    createSubject: builder.mutation<SubjectType, CreateSubjectRequest>({
+      query: (data) => ({
+        url: "/subject",
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: ["Subject"],
+    }),
+    updateSubject: builder.mutation<
+      SubjectType,
+      { id: number; data: UpdateSubjectRequest }
+    >({
+      query: ({ id, data }) => ({
+        url: `/subject/${id}`,
+        method: "PUT",
+        body: data,
+      }),
+      invalidatesTags: (result, error, { id }) => [
+        { type: "Subject", id },
+        "Subject",
+      ],
+    }),
+    deleteSubject: builder.mutation<{ message: string }, number>({
+      query: (id) => ({
+        url: `/subject/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Subject"],
+    }),
+  }),
+});
+
+export const {
+  useGetSubjectsQuery,
+  useGetSubjectByIdQuery,
+  useCreateSubjectMutation,
+  useUpdateSubjectMutation,
+  useDeleteSubjectMutation,
+} = subjectApi;

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router-dom";
 import { EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
@@ -12,16 +12,12 @@ import { Modal, Box, Typography, TextField } from "@mui/material";
 import {
   useLoginMutation,
   useVerifyOtpMutation,
+  useFetchUserQuery,
 } from "../../stores/auth/authApi";
 import { useDispatch } from "react-redux";
-import { setCredentials } from "../../stores/auth/authSlice";
-import { authServices } from "../../services/authServices";
-import { setUser } from "../../stores/auth/authSlice";
-
-interface VerifyOtpType {
-  userId: number;
-  otp: string;
-}
+import { setCredentials, setUser } from "../../stores/auth/authSlice";
+import { UserType } from "../../types";
+import Cookies from "js-cookie";
 
 interface FormErrors {
   email?: string;
@@ -57,8 +53,9 @@ export default function SignInForm() {
   const [userId, setUserId] = useState<number | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
   const dispatch = useDispatch();
-  const [login, { isLoading, error }] = useLoginMutation();
+  const [login, { isLoading }] = useLoginMutation();
   const [verifyOtp] = useVerifyOtpMutation();
+  const { data: userData, refetch } = useFetchUserQuery();
 
   const handleLoginSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -74,8 +71,10 @@ export default function SignInForm() {
       await loginSchema.validate(data, { abortEarly: false });
       const response = await login(data).unwrap();
 
-      setUserId(response.data.id);
-      setOpenModal(true);
+      if (response.status === "PENDING") {
+        setUserId(response.data.id);
+        setOpenModal(true);
+      }
     } catch (err: any) {
       if (err instanceof yup.ValidationError) {
         const validationErrors: FormErrors = {};
@@ -86,7 +85,9 @@ export default function SignInForm() {
         });
         setErrors(validationErrors);
       } else {
-        toast.error(err.data.message);
+        toast.error(
+          err.data?.message || "Tên đăng nhập hoặc mật khẩu không đúng"
+        );
       }
     }
   };
@@ -95,9 +96,18 @@ export default function SignInForm() {
     try {
       await otpSchema.validate({ otp }, { abortEarly: false });
       if (!userId) throw new Error("User ID không hợp lệ");
-      const otpData: VerifyOtpType = { userId, otp };
-      const response = await verifyOtp(otpData).unwrap();
-      if (response.status == "VERIFIED") {
+      const response = await verifyOtp({ userId, otp }).unwrap();
+
+      if (
+        response.status === "VERIFIED" &&
+        response.access_token &&
+        response.refresh_token
+      ) {
+        // Set cookies first
+        Cookies.set("accessToken", response.access_token);
+        Cookies.set("refreshToken", response.refresh_token);
+
+        // Then update Redux store
         dispatch(
           setCredentials({
             accessToken: response.access_token,
@@ -105,19 +115,18 @@ export default function SignInForm() {
           })
         );
 
-        // Đợi một chút để đảm bảo token đã được lưu
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        // Gọi API lấy thông tin user
-        const userResponse = await authServices.fetchUser();
-        dispatch(setUser(userResponse));
-
-        setOpenModal(false);
-        navigate("/");
+        // Wait for user data to be fetched before navigating
+        const { data: userData } = await refetch();
+        if (userData) {
+          dispatch(setUser(userData as UserType));
+          setOpenModal(false); // Close the modal
+          navigate("/", { replace: true });
+        }
+      } else {
+        throw new Error("Không nhận được token sau khi xác thực OTP");
       }
     } catch (err: any) {
-      toast.error(err.data?.message || "Có lỗi xảy ra");
-      console.log("Đây", err);
+      toast.error(err.data?.message || err.message || "Mã OTP không hợp lệ");
     }
   };
 
@@ -159,7 +168,7 @@ export default function SignInForm() {
                     fill="#EB4335"
                   />
                 </svg>
-                Đăng nhập với google
+                Đăng nhập với Google
               </button>
               <button className="inline-flex items-center justify-center gap-3 py-3 text-sm font-normal text-gray-700 transition-colors bg-gray-100 rounded-lg px-7 hover:bg-gray-200 hover:text-gray-800 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10">
                 <CiFacebook size={32} />
@@ -197,7 +206,7 @@ export default function SignInForm() {
                     <Input
                       name="password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
+                      placeholder="Nhập mật khẩu"
                       error={!!errors.password}
                       hint={errors.password}
                     />

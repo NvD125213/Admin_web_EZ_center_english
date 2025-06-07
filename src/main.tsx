@@ -10,6 +10,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import MuiThemeWrapper from "./context/ThemeMuiContext.tsx";
 import { Provider } from "react-redux";
 import { store } from "./stores/index.ts";
+import { SocketProvider } from "./context/SocketContext";
+
 // Create a client
 const queryClient = new QueryClient();
 
@@ -20,7 +22,9 @@ createRoot(document.getElementById("root")!).render(
         <AppWrapper>
           <QueryClientProvider client={queryClient}>
             <Provider store={store}>
-              <App />
+              <SocketProvider>
+                <App />
+              </SocketProvider>
             </Provider>
           </QueryClientProvider>
         </AppWrapper>

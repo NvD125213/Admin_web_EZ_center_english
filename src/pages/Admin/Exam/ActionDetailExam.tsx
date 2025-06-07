@@ -235,9 +235,19 @@ const ActionDetailExam = ({
           `questions[${i}][global_order]`,
           q.global_order.toString()
         );
-        q.option.forEach((opt, j) => {
-          formData.append(`questions[${i}][option][${j}]`, opt);
-        });
+
+        // Convert options array to key-value object
+        const optionsObject = q.option.reduce(
+          (acc: any, value: string, index: number) => {
+            acc[String.fromCharCode(65 + index)] = value;
+            return acc;
+          },
+          {}
+        );
+        formData.append(
+          `questions[${i}][option]`,
+          JSON.stringify(optionsObject)
+        );
 
         if (q.elements && q.elements.length > 0) {
           q.elements.forEach((file: File) => {
@@ -275,9 +285,26 @@ const ActionDetailExam = ({
       formData.append("score", editedQuestion.score.toString());
       formData.append("global_order", editedQuestion.global_order.toString());
 
-      Object.entries(editedQuestion.option).forEach(([key, value]) => {
-        formData.append(`option[${key}]`, value as string);
-      });
+      // Handle options - if it's already an object, use it directly, otherwise convert from array
+      let optionsObject;
+      if (Array.isArray(editedQuestion.option)) {
+        optionsObject = editedQuestion.option.reduce(
+          (acc: any, value: string, index: number) => {
+            acc[String.fromCharCode(65 + index)] = value;
+            return acc;
+          },
+          {}
+        );
+      } else {
+        // If it's already an object, ensure it has the correct format
+        optionsObject = {
+          A: editedQuestion.option.A || "",
+          B: editedQuestion.option.B || "",
+          C: editedQuestion.option.C || "",
+          D: editedQuestion.option.D || "",
+        };
+      }
+      formData.append("option", JSON.stringify(optionsObject));
 
       if (editedQuestion.elements && editedQuestion.elements.length > 0) {
         editedQuestion.elements.forEach((file: File) => {
@@ -373,6 +400,7 @@ const ActionDetailExam = ({
             InputProps={{ sx: { borderRadius: 0 } }}
             label="Tiêu đề câu hỏi"
             value={question.title}
+            sx={{ mb: 2 }}
             onChange={(e) =>
               handleQuestionChange(index, "title", e.target.value)
             }
@@ -384,6 +412,7 @@ const ActionDetailExam = ({
             rows={2}
             label="Mô tả câu hỏi"
             value={question.description}
+            sx={{ mb: 2 }}
             onChange={(e) =>
               handleQuestionChange(index, "description", e.target.value)
             }
@@ -397,6 +426,7 @@ const ActionDetailExam = ({
                 fullWidth
                 label={`Đáp án ${String.fromCharCode(65 + optIndex)}`}
                 value={opt}
+                sx={{ mb: 2 }}
                 onChange={(e) =>
                   handleOptionChange(index, optIndex, e.target.value)
                 }
@@ -425,6 +455,7 @@ const ActionDetailExam = ({
               type="number"
               label="Điểm"
               value={question.score}
+              sx={{ mb: 2 }}
               onChange={(e) =>
                 handleQuestionChange(index, "score", Number(e.target.value))
               }
@@ -468,6 +499,16 @@ const ActionDetailExam = ({
   const renderEditForm = () => {
     if (!editedQuestion) return null;
 
+    // Convert options to array format for the form if it's an object
+    const optionsArray = Array.isArray(editedQuestion.option)
+      ? editedQuestion.option
+      : [
+          editedQuestion.option.A || "",
+          editedQuestion.option.B || "",
+          editedQuestion.option.C || "",
+          editedQuestion.option.D || "",
+        ];
+
     return (
       <div className="space-y-6 mt-4">
         <TextField
@@ -491,13 +532,19 @@ const ActionDetailExam = ({
         />
 
         <div className="space-y-2">
-          {Object.entries(editedQuestion.option).map(([key, value], index) => (
+          {optionsArray.map((value: string, index: number) => (
             <TextField
-              key={key}
+              key={index}
               fullWidth
-              label={`Đáp án ${key}`}
+              label={`Đáp án ${String.fromCharCode(65 + index)}`}
               value={value}
-              onChange={(e) => handleEditOptionChange(key, e.target.value)}
+              sx={{ mb: 2 }}
+              onChange={(e) => {
+                // Update the options array
+                const newOptions = [...optionsArray];
+                newOptions[index] = e.target.value;
+                handleEditQuestionChange("option", newOptions);
+              }}
               InputProps={{ sx: { borderRadius: 0 } }}
             />
           ))}
@@ -509,10 +556,11 @@ const ActionDetailExam = ({
             <Select
               value={editedQuestion.correct_option}
               label="Đáp án đúng"
+              sx={{ mb: 2 }}
               onChange={(e) =>
                 handleEditQuestionChange("correct_option", e.target.value)
               }>
-              {Object.keys(editedQuestion.option).map((key) => (
+              {["A", "B", "C", "D"].map((key) => (
                 <MenuItem key={key} value={key}>
                   {key}
                 </MenuItem>

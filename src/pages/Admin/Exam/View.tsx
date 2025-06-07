@@ -2,7 +2,8 @@ import PageBreadcrumb from "../../../components/common/PageBreadCrumb";
 import { useState, useEffect } from "react";
 import { IoIosAdd } from "react-icons/io";
 import { ExamType, SubjectType } from "../../../types";
-import { subjectServices } from "../../../services/subjectServices";
+import { PartType } from "../../../types/part";
+import { useGetSubjectsQuery } from "../../../services/subjectServices";
 import CommonTable from "../../../components/common/Table";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useQueryString } from "../../../hooks/useQueryString";
@@ -19,7 +20,6 @@ import {
   DialogActions,
   Button,
 } from "@mui/material";
-import useSelectOptionData from "../../../hooks/useSelectOption";
 import { useNavigate } from "react-router";
 import { useModal } from "../../../hooks/useModal";
 import toast from "react-hot-toast";
@@ -27,7 +27,6 @@ import { examServices } from "../../../services/examServices";
 import ExamAction from "./ActionExam";
 import ComponentCard from "../../../components/common/ComponentCard";
 import { partServices } from "../../../services/partServices";
-import { PartType } from "../../../types/part";
 import { PencilIcon } from "../../../icons";
 import { RiDeleteBinLine } from "react-icons/ri";
 
@@ -60,11 +59,11 @@ const ExamPage = () => {
   const [selectedExamForPart, setSelectedExamForPart] = useState<
     ExamType | undefined
   >(undefined);
-  const [value, setValue] = useState("");
+  // const [value, setValue] = useState("");
   const [isSubjectLoading, setIsSubjectLoading] = useState(false);
-  const handleChangeSelect = (event: any) => {
-    setValue(event.target.value);
-  };
+  // const handleChangeSelect = (event: any) => {
+  //   setValue(event.target.value);
+  // };
 
   // Sync state with query string changes
   useEffect(() => {
@@ -112,7 +111,7 @@ const ExamPage = () => {
     if (page < totalPages) {
       queryClient.prefetchQuery({
         queryKey: ["exams", page + 1, limit],
-        queryFn: () => subjectServices.get({ page: page + 1, limit }),
+        queryFn: () => examServices.get({ page: page + 1, limit }),
       });
     }
   }, [page, limit, totalPages, queryClient]);
@@ -141,7 +140,7 @@ const ExamPage = () => {
     if (!confirm) return;
 
     try {
-      await subjectServices.delete(id);
+      await examServices.delete(id);
       toast.success(`Xóa ${selectedIds.length} bài thi thành công!`);
       queryClient.invalidateQueries(["exams", page, limit]);
     } catch (error: any) {
@@ -150,13 +149,32 @@ const ExamPage = () => {
     }
   };
 
-  const { data: subjects } = useSelectOptionData<SubjectType>({
-    service: () => subjectServices.get({ all: true }), // dịch vụ có thể trả về mảng hoặc { data: [...] }
-  });
+  const { data: subjectsData } = useGetSubjectsQuery({ all: true });
+  const subjects = subjectsData?.data || [];
 
-  const { data: parts } = useSelectOptionData<PartType>({
-    service: () => partServices.get(),
-  });
+  const [parts, setParts] = useState<PartType[]>([]);
+
+  useEffect(() => {
+    const fetchParts = async () => {
+      try {
+        const response = await partServices.get();
+        // Kiểm tra và xử lý response
+        if (Array.isArray(response)) {
+          setParts(response);
+        } else if (response.data && Array.isArray(response.data)) {
+          setParts(response.data);
+        } else {
+          console.error("Unexpected response format:", response);
+          setParts([]);
+        }
+      } catch (error) {
+        console.error("Error fetching parts:", error);
+        setParts([]);
+      }
+    };
+    fetchParts();
+  }, []);
+
   // Xử lý khi thay đổi chủ đề để xem danh sách bài thi
   const handleSubjectChange = async (event: SelectChangeEvent) => {
     const subjectId = event.target.value;
@@ -314,36 +332,40 @@ const ExamPage = () => {
           </DialogTitle>
           <DialogContent>
             <div className="mt-4 space-y-2">
-              {parts?.map((part) => (
-                <div
-                  key={part.id}
-                  onClick={() => handlePartClick(part)}
-                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
-                  <span className="text-gray-700 dark:text-gray-300">
-                    {part.name}
-                  </span>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Xử lý chỉnh sửa part
-                        console.log("Edit part:", part);
-                      }}
-                      className="p-2 text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded-full transition-colors">
-                      <PencilIcon className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Xử lý xóa part
-                        console.log("Delete part:", part);
-                      }}
-                      className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors">
-                      <RiDeleteBinLine className="w-5 h-5" />
-                    </button>
+              {parts && parts.length > 0 ? (
+                parts.map((part) => (
+                  <div
+                    key={part.id}
+                    onClick={() => handlePartClick(part)}
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                    <span className="text-gray-700 dark:text-gray-300">
+                      {part.name}
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          console.log("Edit part:", part);
+                        }}
+                        className="p-2 text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded-full transition-colors">
+                        <PencilIcon className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          console.log("Delete part:", part);
+                        }}
+                        className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors">
+                        <RiDeleteBinLine className="w-5 h-5" />
+                      </button>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-center text-gray-500 dark:text-gray-400 py-4">
+                  Không có part nào
                 </div>
-              ))}
+              )}
             </div>
           </DialogContent>
           <DialogActions>
