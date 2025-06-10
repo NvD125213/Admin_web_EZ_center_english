@@ -5,10 +5,51 @@ import { Link } from "react-router";
 import { useSocket } from "../../context/SocketContext";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
+import ConsultationDetailDialog from "./ConsultationDetailDialog";
+import { useGetConsultationsQuery } from "../../services/consultantServices";
+
+const getNotificationIcon = (type: "payment" | "consultation") => {
+  switch (type) {
+    case "payment":
+      return (
+        <svg
+          className="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+      );
+    case "consultation":
+      return (
+        <svg
+          className="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+          />
+        </svg>
+      );
+    default:
+      return null;
+  }
+};
 
 export default function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedConsultation, setSelectedConsultation] = useState<any>(null);
   const { notifications, markAsRead, clearNotifications } = useSocket();
+  const { data: consultationsData } = useGetConsultationsQuery();
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   function toggleDropdown() {
@@ -26,6 +67,23 @@ export default function NotificationDropdown() {
         markAsRead(notification.id);
       }
     });
+  };
+
+  const handleConsultationClick = (notification: any) => {
+    if (notification.type === "consultation" && consultationsData?.data) {
+      const consultationId = parseInt(notification.id.split("-")[1]);
+      const consultation = consultationsData.data.find(
+        (c) => c.id === consultationId
+      );
+      if (consultation) {
+        setSelectedConsultation(consultation);
+        setIsOpen(false);
+      }
+    }
+  };
+
+  const handleCloseDetailDialog = () => {
+    setSelectedConsultation(null);
   };
 
   return (
@@ -97,24 +155,19 @@ export default function NotificationDropdown() {
             notifications.map((notification) => (
               <li key={notification.id}>
                 <DropdownItem
-                  onItemClick={closeDropdown}
+                  onItemClick={() => {
+                    if (notification.type === "consultation") {
+                      handleConsultationClick(notification);
+                    } else {
+                      closeDropdown();
+                    }
+                  }}
                   className={`flex gap-3 rounded-lg border-b border-gray-100 p-3 px-4.5 py-3 hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-white/5 ${
                     !notification.read ? "bg-gray-50 dark:bg-gray-800/50" : ""
                   }`}>
                   <span className="relative block w-full h-10 rounded-full z-1 max-w-10">
                     <div className="w-full h-full flex items-center justify-center bg-primary-100 text-primary-600 rounded-full">
-                      <svg
-                        className="w-6 h-6"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
+                      {getNotificationIcon(notification.type)}
                     </div>
                     {!notification.read && (
                       <span className="absolute bottom-0 right-0 z-10 h-2.5 w-2.5 rounded-full bg-primary-500 border-2 border-white dark:border-gray-900"></span>
@@ -130,7 +183,11 @@ export default function NotificationDropdown() {
                     </span>
 
                     <span className="flex items-center gap-2 text-gray-500 text-theme-xs dark:text-gray-400">
-                      <span>Thanh toán</span>
+                      <span>
+                        {notification.type === "payment"
+                          ? "Thanh toán"
+                          : "Tư vấn"}
+                      </span>
                       <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
                       <span>
                         {formatDistanceToNow(new Date(notification.timestamp), {
@@ -153,6 +210,12 @@ export default function NotificationDropdown() {
           </Link>
         )}
       </Dropdown>
+
+      <ConsultationDetailDialog
+        open={!!selectedConsultation}
+        onClose={handleCloseDetailDialog}
+        consultation={selectedConsultation}
+      />
     </div>
   );
 }

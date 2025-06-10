@@ -149,12 +149,12 @@ const BlogView = () => {
 
   return (
     <>
-      <PageBreadcrumb pageTitle="Quản lý Blog" />
+      <PageBreadcrumb pageTitle="Quản lý bài viết" />
       <Box sx={{ p: 3 }}>
         <Stack direction="row" justifyContent="space-between" mb={3}>
           <TextField
             size="small"
-            placeholder="Tìm kiếm blog..."
+            placeholder="Tìm kiếm bài viết..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             sx={{ width: 300 }}

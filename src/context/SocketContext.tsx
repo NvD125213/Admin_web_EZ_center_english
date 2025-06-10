@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
+import { useGetConsultationsQuery } from "../services/consultantServices";
 
 interface Notification {
   id: string;
@@ -7,6 +8,7 @@ interface Notification {
   message: string;
   timestamp: string;
   read: boolean;
+  type: "payment" | "consultation";
 }
 
 interface SocketContextType {
@@ -30,6 +32,32 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const { data: consultationsData } = useGetConsultationsQuery();
+
+  // Sync consultations with notifications when data is loaded
+  useEffect(() => {
+    if (consultationsData?.data) {
+      const consultationNotifications = consultationsData.data.map(
+        (consultation) => ({
+          id: `consultation-${consultation.id}`,
+          title: "Yêu cầu tư vấn mới",
+          message: `${consultation.name} đã gửi yêu cầu tư vấn cho khóa học ${consultation.course.menu.name}`,
+          timestamp: consultation.create_at,
+          read: false,
+          type: "consultation" as const,
+        })
+      );
+
+      // Merge with existing notifications, avoiding duplicates
+      setNotifications((prevNotifications) => {
+        const existingIds = new Set(prevNotifications.map((n) => n.id));
+        const newNotifications = consultationNotifications.filter(
+          (n) => !existingIds.has(n.id)
+        );
+        return [...newNotifications, ...prevNotifications];
+      });
+    }
+  }, [consultationsData]);
 
   useEffect(() => {
     // Khởi tạo kết nối socket
@@ -69,9 +97,34 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({
               : `${payment.student.name} thanh toán thất bại khóa học ${payment.class.course.name} - ${payment.class.name}`,
           timestamp: new Date().toISOString(),
           read: false,
+          type: "payment",
         };
 
         setNotifications((prev) => [notification, ...prev]);
+      }
+    });
+
+    // Lắng nghe sự kiện newConsultation
+    socketInstance.on("newConsultation", (data) => {
+      console.log("Received new consultation:", data);
+      const { consultation } = data;
+
+      if (consultation) {
+        const notification: Notification = {
+          id: `consultation-${consultation.id}`,
+          title: "Yêu cầu tư vấn mới",
+          message: `${consultation.name} đã gửi yêu cầu tư vấn cho khóa học ${consultation.course.menu.name}`,
+          timestamp: consultation.timestamp,
+          read: false,
+          type: "consultation",
+        };
+
+        setNotifications((prev) => {
+          // Check if notification already exists
+          const exists = prev.some((n) => n.id === notification.id);
+          if (exists) return prev;
+          return [notification, ...prev];
+        });
       }
     });
 

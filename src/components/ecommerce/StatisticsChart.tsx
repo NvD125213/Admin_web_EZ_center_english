@@ -1,8 +1,25 @@
 import Chart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
-import ChartTab from "../common/ChartTab";
+import { useGetPaymentStatisticalYearQuery } from "../../services/statisticalServices";
 
 export default function StatisticsChart() {
+  const { data: paymentStatisticalYear, isLoading } =
+    useGetPaymentStatisticalYearQuery();
+
+  if (isLoading) {
+    return (
+      <div className="rounded-2xl border border-gray-200 bg-white px-5 pb-5 pt-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6 animate-pulse">
+        <div className="flex flex-col gap-5 mb-6 sm:flex-row sm:justify-between">
+          <div className="w-full">
+            <div className="h-6 bg-gray-200 rounded w-48"></div>
+            <div className="mt-1 h-4 bg-gray-200 rounded w-64"></div>
+          </div>
+        </div>
+        <div className="h-[310px] bg-gray-200 rounded"></div>
+      </div>
+    );
+  }
+
   const options: ApexOptions = {
     legend: {
       show: false, // Hide legend
@@ -62,18 +79,18 @@ export default function StatisticsChart() {
     xaxis: {
       type: "category", // Category-based x-axis
       categories: [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
+        "Tháng 1",
+        "Tháng 2",
+        "Tháng 3",
+        "Tháng 4",
+        "Tháng 5",
+        "Tháng 6",
+        "Tháng 7",
+        "Tháng 8",
+        "Tháng 9",
+        "Tháng 10",
+        "Tháng 11",
+        "Tháng 12",
       ],
       axisBorder: {
         show: false, // Hide x-axis border
@@ -103,12 +120,8 @@ export default function StatisticsChart() {
 
   const series = [
     {
-      name: "Sales",
-      data: [180, 190, 170, 160, 175, 165, 170, 205, 230, 210, 240, 235],
-    },
-    {
-      name: "Revenue",
-      data: [40, 30, 50, 40, 55, 40, 70, 100, 110, 120, 150, 140],
+      name: "Doanh thu",
+      data: paymentStatisticalYear?.map((item: any) => item.countPayment) || [],
     },
   ];
   return (
@@ -116,14 +129,11 @@ export default function StatisticsChart() {
       <div className="flex flex-col gap-5 mb-6 sm:flex-row sm:justify-between">
         <div className="w-full">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-            Statistics
+            Thống kê doanh thu
           </h3>
           <p className="mt-1 text-gray-500 text-theme-sm dark:text-gray-400">
-            Target you’ve set for each month
+            Thống kê doanh thu theo từng tháng trong năm
           </p>
-        </div>
-        <div className="flex items-start w-full gap-3 sm:justify-end">
-          <ChartTab />
         </div>
       </div>
 

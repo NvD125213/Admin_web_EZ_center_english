@@ -4,9 +4,43 @@ import { useState } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { MoreDotIcon } from "../../icons";
+import { useGetPaymentStatisticalQuery } from "../../services/statisticalServices";
 
 export default function MonthlyTarget() {
-  const series = [75.55];
+  const [isOpen, setIsOpen] = useState(false);
+  const { data: paymentStatistical, isLoading } =
+    useGetPaymentStatisticalQuery();
+  const series = [paymentStatistical?.percentageChange];
+
+  function toggleDropdown() {
+    setIsOpen(!isOpen);
+  }
+
+  function closeDropdown() {
+    setIsOpen(false);
+  }
+
+  const formatCurrency = (amount: number) => {
+    return `${amount.toLocaleString("vi-VN")} đồng`;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="rounded-2xl border border-gray-200 bg-gray-100 dark:border-gray-800 dark:bg-white/[0.03] animate-pulse">
+        <div className="px-5 pt-5 bg-white shadow-default rounded-2xl pb-11 dark:bg-gray-900 sm:px-6 sm:pt-6">
+          <div className="flex justify-between">
+            <div>
+              <div className="h-6 bg-gray-200 rounded w-48"></div>
+              <div className="mt-1 h-4 bg-gray-200 rounded w-64"></div>
+            </div>
+            <div className="w-6 h-6 bg-gray-200 rounded"></div>
+          </div>
+          <div className="mt-6 h-[330px] bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
   const options: ApexOptions = {
     colors: ["#465FFF"],
     chart: {
@@ -54,25 +88,17 @@ export default function MonthlyTarget() {
     },
     labels: ["Progress"],
   };
-  const [isOpen, setIsOpen] = useState(false);
 
-  function toggleDropdown() {
-    setIsOpen(!isOpen);
-  }
-
-  function closeDropdown() {
-    setIsOpen(false);
-  }
   return (
     <div className="rounded-2xl border border-gray-200 bg-gray-100 dark:border-gray-800 dark:bg-white/[0.03]">
       <div className="px-5 pt-5 bg-white shadow-default rounded-2xl pb-11 dark:bg-gray-900 sm:px-6 sm:pt-6">
         <div className="flex justify-between">
           <div>
             <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-              Monthly Target
+              Doanh thu tháng này
             </h3>
             <p className="mt-1 text-gray-500 text-theme-sm dark:text-gray-400">
-              Target you’ve set for each month
+              Doanh thu tháng này
             </p>
           </div>
           <div className="relative inline-block">
@@ -82,19 +108,16 @@ export default function MonthlyTarget() {
             <Dropdown
               isOpen={isOpen}
               onClose={closeDropdown}
-              className="w-40 p-2"
-            >
+              className="w-40 p-2">
               <DropdownItem
                 onItemClick={closeDropdown}
-                className="flex w-full font-normal text-left text-gray-500 rounded-lg hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
-              >
-                View More
+                className="flex w-full font-normal text-left text-gray-500 rounded-lg hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300">
+                Xem chi tiết
               </DropdownItem>
               <DropdownItem
                 onItemClick={closeDropdown}
-                className="flex w-full font-normal text-left text-gray-500 rounded-lg hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
-              >
-                Delete
+                className="flex w-full font-normal text-left text-gray-500 rounded-lg hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300">
+                Xóa
               </DropdownItem>
             </Dropdown>
           </div>
@@ -110,54 +133,33 @@ export default function MonthlyTarget() {
           </div>
 
           <span className="absolute left-1/2 top-full -translate-x-1/2 -translate-y-[95%] rounded-full bg-success-50 px-3 py-1 text-xs font-medium text-success-600 dark:bg-success-500/15 dark:text-success-500">
-            +10%
+            {paymentStatistical?.percentageChange}%
           </span>
         </div>
         <p className="mx-auto mt-10 w-full max-w-[380px] text-center text-sm text-gray-500 sm:text-base">
-          You earn $3287 today, it's higher than last month. Keep up your good
-          work!
+          <span>
+            Doanh thu tháng này là{" "}
+            {formatCurrency(paymentStatistical?.currentMonthTotal ?? 0)},{" "}
+            {paymentStatistical?.isIncrease
+              ? "cao hơn tháng trước. Tiếp tục làm tốt nhé!"
+              : "thấp hơn tháng trước. Cố gắng hơn nhé!"}
+          </span>
         </p>
       </div>
 
-      <div className="flex items-center justify-center gap-5 px-6 py-3.5 sm:gap-8 sm:py-5">
-        <div>
-          <p className="mb-1 text-center text-gray-500 text-theme-xs dark:text-gray-400 sm:text-sm">
-            Target
+      <div className="grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-800 px-6 py-4">
+        <div className="px-4">
+          <p className="mb-2 text-center text-gray-500 text-theme-xs dark:text-gray-400 sm:text-sm">
+            Doanh thu
           </p>
-          <p className="flex items-center justify-center gap-1 text-base font-semibold text-gray-800 dark:text-white/90 sm:text-lg">
-            $20K
+          <p className="flex items-center justify-center gap-1.5 text-[15px] font-semibold text-gray-800 dark:text-white/90">
+            {formatCurrency(paymentStatistical?.currentMonthTotal ?? 0)}
             <svg
-              width="16"
-              height="16"
+              width="14"
+              height="14"
               viewBox="0 0 16 16"
               fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M7.26816 13.6632C7.4056 13.8192 7.60686 13.9176 7.8311 13.9176C7.83148 13.9176 7.83187 13.9176 7.83226 13.9176C8.02445 13.9178 8.21671 13.8447 8.36339 13.6981L12.3635 9.70076C12.6565 9.40797 12.6567 8.9331 12.3639 8.6401C12.0711 8.34711 11.5962 8.34694 11.3032 8.63973L8.5811 11.36L8.5811 2.5C8.5811 2.08579 8.24531 1.75 7.8311 1.75C7.41688 1.75 7.0811 2.08579 7.0811 2.5L7.0811 11.3556L4.36354 8.63975C4.07055 8.34695 3.59568 8.3471 3.30288 8.64009C3.01008 8.93307 3.01023 9.40794 3.30321 9.70075L7.26816 13.6632Z"
-                fill="#D92D20"
-              />
-            </svg>
-          </p>
-        </div>
-
-        <div className="w-px bg-gray-200 h-7 dark:bg-gray-800"></div>
-
-        <div>
-          <p className="mb-1 text-center text-gray-500 text-theme-xs dark:text-gray-400 sm:text-sm">
-            Revenue
-          </p>
-          <p className="flex items-center justify-center gap-1 text-base font-semibold text-gray-800 dark:text-white/90 sm:text-lg">
-            $20K
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
+              xmlns="http://www.w3.org/2000/svg">
               <path
                 fillRule="evenodd"
                 clipRule="evenodd"
@@ -168,21 +170,18 @@ export default function MonthlyTarget() {
           </p>
         </div>
 
-        <div className="w-px bg-gray-200 h-7 dark:bg-gray-800"></div>
-
-        <div>
-          <p className="mb-1 text-center text-gray-500 text-theme-xs dark:text-gray-400 sm:text-sm">
-            Today
+        <div className="px-4">
+          <p className="mb-2 text-center text-gray-500 text-theme-xs dark:text-gray-400 sm:text-sm">
+            Hôm nay
           </p>
-          <p className="flex items-center justify-center gap-1 text-base font-semibold text-gray-800 dark:text-white/90 sm:text-lg">
-            $20K
+          <p className="flex items-center justify-center gap-1.5 text-[15px] font-semibold text-gray-800 dark:text-white/90">
+            {formatCurrency(paymentStatistical?.todayTotal ?? 0)}
             <svg
-              width="16"
-              height="16"
+              width="14"
+              height="14"
               viewBox="0 0 16 16"
               fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
+              xmlns="http://www.w3.org/2000/svg">
               <path
                 fillRule="evenodd"
                 clipRule="evenodd"

@@ -34,20 +34,7 @@ const navItems: NavItem[] = [
     name: "Dashboard",
     path: "/",
   },
-  {
-    icon: <UserCircleIcon />,
-    name: "Profile",
-    path: "/profile",
-  },
-  {
-    icon: <MdOutlineSubject />,
-    name: "Quản lý bài thi",
-    subItems: [
-      { name: "Chủ đề", path: "/subject", pro: false },
-      { name: "Bài thi", path: "/exam", pro: false },
-      { name: "Upload Excel", path: "/upload-file", pro: false },
-    ],
-  },
+
   {
     icon: <VscLayoutMenubar />,
     name: "Quản lý menu",
@@ -80,6 +67,15 @@ const navItems: NavItem[] = [
       { name: "Danh sách lớp học", path: "/classroom", pro: false },
       { name: "Danh sách lịch dạy", path: "/schedule", pro: false },
       { name: "Thời khóa biểu", path: "/timetable", pro: false },
+    ],
+  },
+  {
+    icon: <MdOutlineSubject />,
+    name: "Quản lý bài thi",
+    subItems: [
+      { name: "Chủ đề", path: "/subject", pro: false },
+      { name: "Bài thi", path: "/exam", pro: false },
+      { name: "Upload Excel", path: "/upload-file", pro: false },
     ],
   },
 ];

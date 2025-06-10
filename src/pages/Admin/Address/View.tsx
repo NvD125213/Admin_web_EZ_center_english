@@ -483,57 +483,6 @@ const AddressList = () => {
               </TableBody>
             </Table>
           </TableContainer>
-
-          <Stack
-            direction="row"
-            spacing={2}
-            justifyContent="center"
-            alignItems="center"
-            sx={{ mt: 3 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-              startIcon={<FiChevronLeft />}>
-              Trang trước
-            </Button>
-
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                minWidth: "120px",
-                justifyContent: "center",
-              }}>
-              <Typography variant="body2" color="text.secondary">
-                Trang
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  fontWeight: "bold",
-                  color: theme.palette.primary.main,
-                  minWidth: "24px",
-                  textAlign: "center",
-                }}>
-                {page}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                / {totalPages}
-              </Typography>
-            </Box>
-
-            <Button
-              variant="outlined"
-              size="small"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-              endIcon={<FiChevronRight />}>
-              Trang sau
-            </Button>
-          </Stack>
         </CardContent>
       </Card>
 
