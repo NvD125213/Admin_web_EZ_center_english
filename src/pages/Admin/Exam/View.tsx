@@ -7,6 +7,7 @@ import { useGetSubjectsQuery } from "../../../services/subjectServices";
 import CommonTable from "../../../components/common/Table";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useQueryString } from "../../../hooks/useQueryString";
+import { useCreatePartMutation } from "../../../services/partServices";
 import {
   Pagination,
   Select,
@@ -19,6 +20,7 @@ import {
   DialogContent,
   DialogActions,
   Button,
+  TextField,
 } from "@mui/material";
 import { useNavigate } from "react-router";
 import { useModal } from "../../../hooks/useModal";
@@ -154,24 +156,28 @@ const ExamPage = () => {
 
   const [parts, setParts] = useState<PartType[]>([]);
 
-  useEffect(() => {
-    const fetchParts = async () => {
-      try {
-        const response = await partServices.get();
-        // Kiểm tra và xử lý response
-        if (Array.isArray(response)) {
-          setParts(response);
-        } else if (response.data && Array.isArray(response.data)) {
-          setParts(response.data);
-        } else {
-          console.error("Unexpected response format:", response);
-          setParts([]);
-        }
-      } catch (error) {
-        console.error("Error fetching parts:", error);
+  const fetchParts = async () => {
+    try {
+      setIsLoadingPart(true);
+      const response = await partServices.get();
+      // Kiểm tra và xử lý response
+      if (Array.isArray(response)) {
+        setParts(response);
+      } else if (response.data && Array.isArray(response.data)) {
+        setParts(response.data);
+      } else {
+        console.error("Unexpected response format:", response);
         setParts([]);
       }
-    };
+    } catch (error) {
+      console.error("Error fetching parts:", error);
+      setParts([]);
+    } finally {
+      setIsLoadingPart(false);
+    }
+  };
+
+  useEffect(() => {
     fetchParts();
   }, []);
 
@@ -215,6 +221,28 @@ const ExamPage = () => {
     }
   };
 
+  // Mở modal part
+  const [newPartName, setNewPartName] = useState("");
+  const [modalPart, setModalPart] = useState(false);
+  const [createPart] = useCreatePartMutation();
+  const [isLoadingPart, setIsLoadingPart] = useState(false);
+  const handleAddPart = async () => {
+    try {
+      setIsLoadingPart(true);
+      const response = await createPart({ name: newPartName });
+      setModalPart(false);
+      setNewPartName("");
+      await toast.success(response.data.message);
+      // Gọi lại fetchParts để cập nhật danh sách
+      await fetchParts();
+    } catch (error) {
+      console.error("Error creating part:", error);
+      toast.error("Có lỗi xảy ra khi tạo part");
+    } finally {
+      setIsLoadingPart(false);
+    }
+  };
+
   return (
     <>
       <PageBreadcrumb pageTitle="Quản lý bài thi trực tuyến" />
@@ -246,7 +274,7 @@ const ExamPage = () => {
               ))}
             </Select>
           </FormControl>
-          <div className="col-span-6"></div>{" "}
+          <div className="col-span-5"></div>{" "}
           {/* Empty space between select and button */}
           <button
             onClick={() => {
@@ -256,6 +284,14 @@ const ExamPage = () => {
             className="col-span-1 flex items-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200">
             <IoIosAdd size={24} />
             Thêm
+          </button>
+          <button
+            onClick={() => {
+              setModalPart(true);
+            }}
+            className="col-span-1 flex items-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200">
+            <IoIosAdd size={24} />
+            Add Part
           </button>
         </div>
 
@@ -332,7 +368,11 @@ const ExamPage = () => {
           </DialogTitle>
           <DialogContent>
             <div className="mt-4 space-y-2">
-              {parts && parts.length > 0 ? (
+              {isLoadingPart ? (
+                <div className="text-center text-gray-500 dark:text-gray-400 py-4">
+                  Đang tải danh sách part...
+                </div>
+              ) : parts && parts.length > 0 ? (
                 parts.map((part) => (
                   <div
                     key={part.id}
@@ -382,6 +422,39 @@ const ExamPage = () => {
           onSuccess={handleSuccess}
         />
       </ComponentCard>
+
+      {/* Modal Part */}
+      <Dialog
+        open={modalPart}
+        onClose={() => setModalPart(false)}
+        maxWidth="sm"
+        fullWidth>
+        <DialogTitle>Thêm Part mới</DialogTitle>
+        <DialogContent>
+          <FormControl fullWidth margin="normal">
+            <TextField
+              label="Tên Part"
+              variant="outlined"
+              value={newPartName}
+              onChange={(e) => setNewPartName(e.target.value)}
+              fullWidth
+              autoFocus
+            />
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setModalPart(false)} color="secondary">
+            Hủy
+          </Button>
+          <Button
+            onClick={handleAddPart}
+            variant="contained"
+            color="primary"
+            disabled={!newPartName.trim() || isLoadingPart}>
+            {isLoadingPart ? "Đang thêm..." : "Thêm"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

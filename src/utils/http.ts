@@ -4,7 +4,7 @@ import { store } from "../stores";
 import { setCredentials, logout } from "../stores/auth/authSlice";
 
 export const axiosInstance = axios.create({
-  baseURL: "http://localhost:3000/api/",
+  baseURL: "http://localhost:4000/api/",
 });
 
 axiosInstance.interceptors.request.use((config) => {
@@ -37,7 +37,7 @@ axiosInstance.interceptors.response.use(
       originalRequest._retry = true;
       try {
         const { data } = await axios.post(
-          "http://localhost:3000/api/auth/refresh-token",
+          "http://localhost:4000/api/auth/refresh-token",
           {
             refreshToken: Cookies.get("refreshToken"),
           }

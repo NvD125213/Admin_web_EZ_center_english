@@ -61,7 +61,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     // Khởi tạo kết nối socket
-    const socketInstance = io("http://localhost:3000", {
+    const socketInstance = io("http://localhost:4000", {
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,

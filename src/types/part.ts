@@ -1,8 +1,8 @@
 export type PartType = {
-  id: number;
+  id?: number;
   name: string;
-  order: number;
-  create_at: string;
-  update_at: string;
-  deleted_at: string | null;
+  order?: number;
+  create_at?: string;
+  update_at?: string;
+  deleted_at?: string | null;
 };

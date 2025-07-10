@@ -3,7 +3,7 @@ import { RootState } from "./index";
 import Cookies from "js-cookie";
 
 export const baseQuery = fetchBaseQuery({
-  baseUrl: "http://localhost:3000/api",
+  baseUrl: "http://localhost:4000/api",
   prepareHeaders: (headers, { getState }) => {
     // Try to get token from Redux state first
     const token = (getState() as RootState).auth.accessToken;
