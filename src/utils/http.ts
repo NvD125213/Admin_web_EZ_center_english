@@ -4,7 +4,7 @@ import { store } from "../stores";
 import { setCredentials, logout } from "../stores/auth/authSlice";
 
 export const axiosInstance = axios.create({
-  baseURL: "http://localhost:4000/api/",
+  baseURL: "https://envidi.io.vn/",
 });
 
 axiosInstance.interceptors.request.use((config) => {
@@ -37,7 +37,7 @@ axiosInstance.interceptors.response.use(
       originalRequest._retry = true;
       try {
         const { data } = await axios.post(
-          "http://localhost:4000/api/auth/refresh-token",
+          "https://envidi.io.vn/api/auth/refresh-token",
           {
             refreshToken: Cookies.get("refreshToken"),
           }
