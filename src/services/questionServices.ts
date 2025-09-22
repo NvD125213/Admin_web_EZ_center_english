@@ -27,7 +27,7 @@ export const questionApi = createApi({
       query: ({ examId, partId }) => ({
         url: `/question/signature`,
         method: "GET",
-        params: { exam_id: examId, part_id: partId },
+        params: { examId: examId, partId: partId },
       }),
       providesTags: ["Question"],
     }),
