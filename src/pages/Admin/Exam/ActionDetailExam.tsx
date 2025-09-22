@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -19,7 +19,7 @@ import { RiDeleteBinLine } from "react-icons/ri";
 import {
   useCreateQuestionMutation,
   useUpdateQuestionMutation,
-  useDeleteQuestionMutation,
+  useCloudinaryUploadSignatureQuery,
 } from "../../../services/questionServices";
 import toast from "react-hot-toast";
 
@@ -197,74 +197,105 @@ const ActionDetailExam = ({
   };
 
   // Handle question submission
-  const [createQuestionMutation] = useCreateQuestionMutation();
   const [updateQuestionMutation] = useUpdateQuestionMutation();
+  const [createQuestionMutation] = useCreateQuestionMutation();
+  const { refetch: refetchCloudinarySignature } =
+    useCloudinaryUploadSignatureQuery({ examId, partId });
 
+  // Sửa: handleSubmitCreate không nhận tham số, dùng trực tiếp biến scope
   const handleSubmitCreate = async () => {
     try {
       setIsSubmitting(true);
-      const formData = new FormData();
 
-      if (!group.title) {
-        toast.error("Tiêu đề nhóm câu hỏi là bắt buộc");
+      // 1. Gọi backend để lấy signature
+      const sigRes = await refetchCloudinarySignature();
+      if (!sigRes.data) {
+        toast.error("Không lấy được signature upload Cloudinary");
         return;
       }
+      const { timestamp, signature, apiKey, cloudName, folder } = sigRes.data;
 
-      formData.append("title", group.title);
-      formData.append("description", group.description || "");
-      formData.append("type_group", (group.type_group || 1).toString());
-
-      const sanitizedExamName = examName.replace(/[^a-zA-Z0-9]/g, "_");
-      const sanitizedPartName = partName.replace(/[^a-zA-Z0-9]/g, "_");
-      formData.append("pathDir", `${sanitizedExamName}/${sanitizedPartName}`);
-
+      // 2. Upload files lên Cloudinary
+      const uploadedGroupElements: { url: string; type: string }[] = [];
       if (group.elements && group.elements.length > 0) {
-        group.elements.forEach((file: File) => {
-          formData.append("elements", file);
-        });
-      }
+        for (const file of group.elements) {
+          const formDataCloud = new FormData();
+          formDataCloud.append("file", file);
+          formDataCloud.append("api_key", apiKey);
+          formDataCloud.append("timestamp", timestamp);
+          formDataCloud.append("signature", signature);
+          formDataCloud.append("folder", folder);
 
-      group.questions.forEach((q, i) => {
-        formData.append(`questions[${i}][title]`, q.title);
-        formData.append(`questions[${i}][description]`, q.description || "");
-        formData.append(`questions[${i}][correct_option]`, q.correct_option);
-        formData.append(`questions[${i}][score]`, Number(q.score).toString());
-        formData.append(
-          `questions[${i}][global_order]`,
-          q.global_order.toString()
-        );
-
-        // Convert options array to key-value object
-        const optionsObject = q.option.reduce(
-          (acc: any, value: string, index: number) => {
-            acc[String.fromCharCode(65 + index)] = value;
-            return acc;
-          },
-          {}
-        );
-        formData.append(
-          `questions[${i}][option]`,
-          JSON.stringify(optionsObject)
-        );
-
-        if (q.elements && q.elements.length > 0) {
-          q.elements.forEach((file: File) => {
-            formData.append(`questions[${i}][elements]`, file);
+          const res = await fetch(
+            `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
+            { method: "POST", body: formDataCloud }
+          );
+          const data = await res.json();
+          if (!data.secure_url) {
+            console.error("Upload Cloudinary thất bại:", data);
+            toast.error("Upload file lên Cloudinary thất bại!");
+            continue; // bỏ qua file này
+          }
+          uploadedGroupElements.push({
+            url: data.secure_url,
+            type: file.type.startsWith("image") ? "image" : "audio",
           });
         }
-      });
+      }
 
-      const response = await createQuestionMutation({
+      // 3. Upload elements của từng question
+      const questionsWithUploadedElements = await Promise.all(
+        group.questions.map(async (question: any) => {
+          const uploadedQuestionElements: { url: string; type: string }[] = [];
+          if (question.elements && question.elements.length > 0) {
+            for (const file of question.elements) {
+              const formDataCloud = new FormData();
+              formDataCloud.append("file", file);
+              formDataCloud.append("api_key", apiKey);
+              formDataCloud.append("timestamp", timestamp);
+              formDataCloud.append("signature", signature);
+              formDataCloud.append("folder", folder);
+
+              const res = await fetch(
+                `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
+                { method: "POST", body: formDataCloud }
+              );
+              const data = await res.json();
+              if (!data.secure_url) {
+                console.error("Upload Cloudinary thất bại:", data);
+                toast.error("Upload file lên Cloudinary thất bại!");
+                continue; // bỏ qua file này
+              }
+              uploadedQuestionElements.push({
+                url: data.secure_url,
+                type: file.type.startsWith("image") ? "image" : "audio",
+              });
+            }
+          }
+          return { ...question, elements: uploadedQuestionElements };
+        })
+      );
+
+      // 4. Chuẩn bị payload gửi về server
+      const payload = {
+        title: group.title,
+        description: group.description || "",
+        type_group: group.type_group || 1,
+        elements: uploadedGroupElements,
+        questions: questionsWithUploadedElements,
+      };
+      console.log("Payload gửi lên backend:", payload);
+
+      // 5. Gửi request tạo câu hỏi
+      await createQuestionMutation({
         examId,
         partId,
-        data: formData,
-      });
+        data: payload,
+      }).unwrap();
 
-      if (response) {
-        toast.success("Thêm câu hỏi thành công");
-        onSuccess();
-        onClose();
-      }
+      toast.success("Thêm câu hỏi thành công");
+      onSuccess();
+      onClose();
     } catch (error: any) {
       console.error("Error submitting form:", error);
       toast.error(error.message || "Có lỗi xảy ra khi thêm câu hỏi");
@@ -276,40 +307,71 @@ const ActionDetailExam = ({
   const handleSubmitEdit = async () => {
     try {
       setIsSubmitting(true);
-      const formData = new FormData();
-      formData.append("title", editedQuestion.title);
-      formData.append("description", editedQuestion.description || "");
-      formData.append("correct_option", editedQuestion.correct_option);
-      formData.append("score", editedQuestion.score.toString());
-      formData.append("global_order", editedQuestion.global_order.toString());
-
-      // Handle options - if it's already an object, use it directly, otherwise convert from array
-      let optionsObject;
-      if (Array.isArray(editedQuestion.option)) {
-        optionsObject = editedQuestion.option.reduce(
-          (acc: any, value: string, index: number) => {
-            acc[String.fromCharCode(65 + index)] = value;
-            return acc;
-          },
-          {}
-        );
-      } else {
-        // If it's already an object, ensure it has the correct format
-        optionsObject = {
-          A: editedQuestion.option.A || "",
-          B: editedQuestion.option.B || "",
-          C: editedQuestion.option.C || "",
-          D: editedQuestion.option.D || "",
-        };
+      // 1. Nếu có file mới, upload lên Cloudinary trước
+      let uploadedElements: { url: string; type: string }[] = [];
+      if (
+        editedQuestion.elements &&
+        editedQuestion.elements.length > 0 &&
+        editedQuestion.elements[0] instanceof File
+      ) {
+        // Lấy signature
+        const sigRes = await refetchCloudinarySignature();
+        if (!sigRes.data) {
+          toast.error("Không lấy được signature upload Cloudinary");
+          setIsSubmitting(false);
+          return;
+        }
+        const { timestamp, signature, apiKey, cloudName, folder } = sigRes.data;
+        for (const file of editedQuestion.elements) {
+          const formDataCloud = new FormData();
+          formDataCloud.append("file", file);
+          formDataCloud.append("api_key", apiKey);
+          formDataCloud.append("timestamp", timestamp);
+          formDataCloud.append("signature", signature);
+          formDataCloud.append("folder", folder);
+          const res = await fetch(
+            `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
+            { method: "POST", body: formDataCloud }
+          );
+          const data = await res.json();
+          if (!data.secure_url) {
+            console.error("Upload Cloudinary thất bại:", data);
+            toast.error("Upload file lên Cloudinary thất bại!");
+            continue;
+          }
+          uploadedElements.push({
+            url: data.secure_url,
+            type: file.type.startsWith("image") ? "image" : "audio",
+          });
+        }
+      } else if (
+        editedQuestion.elements &&
+        editedQuestion.elements.length > 0
+      ) {
+        // Nếu là url cũ (không phải File), giữ nguyên
+        uploadedElements = editedQuestion.elements;
       }
-      formData.append("option", JSON.stringify(optionsObject));
 
-      if (editedQuestion.elements && editedQuestion.elements.length > 0) {
-        editedQuestion.elements.forEach((file: File) => {
-          formData.append("elements", file);
-        });
-      }
+      // 2. Chuẩn bị payload
+      const formData = {
+        title: editedQuestion.title,
+        description: editedQuestion.description || "",
+        correct_option: editedQuestion.correct_option,
+        score: editedQuestion.score,
+        global_order: editedQuestion.global_order,
+        option: Array.isArray(editedQuestion.option)
+          ? editedQuestion.option.reduce(
+              (acc: any, value: string, index: number) => {
+                acc[String.fromCharCode(65 + index)] = value;
+                return acc;
+              },
+              {}
+            )
+          : editedQuestion.option,
+        elements: uploadedElements,
+      };
 
+      // 3. Gửi request update
       const response = await updateQuestionMutation({
         examId,
         partId,

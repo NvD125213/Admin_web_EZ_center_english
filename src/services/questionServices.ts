@@ -23,10 +23,19 @@ export const questionApi = createApi({
       providesTags: ["Question"],
     }),
 
+    cloudinaryUploadSignature: builder.query<any, any>({
+      query: ({ examId, partId }) => ({
+        url: `/question/signature`,
+        method: "GET",
+        params: { exam_id: examId, part_id: partId },
+      }),
+      providesTags: ["Question"],
+    }),
+
     // Tạo mới câu hỏi
     createQuestion: builder.mutation<
       any,
-      { examId: string | null; partId: string | null; data: FormData }
+      { examId: string | null; partId: string | null; data: any }
     >({
       query: ({ examId, partId, data }) => ({
         url: `/question/createQuestion?exam_id=${examId}&part_id=${partId}`,
@@ -43,7 +52,7 @@ export const questionApi = createApi({
         examId: string | null;
         partId: string | null;
         questionId: number;
-        data: FormData;
+        data: any;
       }
     >({
       query: ({ examId, partId, questionId, data }) => ({
@@ -103,4 +112,5 @@ export const {
   useDeleteQuestionMutation,
   useUploadExcelMutation,
   useUpdateGroupQuestionMutation,
+  useCloudinaryUploadSignatureQuery,
 } = questionApi;

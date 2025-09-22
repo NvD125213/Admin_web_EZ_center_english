@@ -80,7 +80,7 @@ const QuestionItem = memo(
                               src={
                                 element.cloudId
                                   ? element.url
-                                  : `https://envidi.io.vn${element.url}`
+                                  : ` ${element.url}`
                               }
                               alt="Question image"
                               className="w-full h-full object-cover hover:scale-105 transition-transform duration-200 cursor-pointer"
@@ -90,7 +90,7 @@ const QuestionItem = memo(
                                 window.open(
                                   element.cloudId
                                     ? element.url
-                                    : `https://envidi.io.vn${element.url}`,
+                                    : `${element.url}`,
                                   "_blank"
                                 );
                               }}
@@ -122,7 +122,7 @@ const QuestionItem = memo(
                                 src={
                                   element.cloudId
                                     ? element.url
-                                    : `https://envidi.io.vn${element.url}`
+                                    : `${element.url}`
                                 }
                                 type="audio/mpeg"
                               />
