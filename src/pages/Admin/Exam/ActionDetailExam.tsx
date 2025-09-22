@@ -16,7 +16,11 @@ import {
 } from "@mui/material";
 import { IoIosAdd } from "react-icons/io";
 import { RiDeleteBinLine } from "react-icons/ri";
-import { questionServices } from "../../../services/questionServices";
+import {
+  useCreateQuestionMutation,
+  useUpdateQuestionMutation,
+  useDeleteQuestionMutation,
+} from "../../../services/questionServices";
 import toast from "react-hot-toast";
 
 interface Question {
@@ -182,16 +186,6 @@ const ActionDetailExam = ({
     }));
   };
 
-  const handleEditOptionChange = (key: string, value: string) => {
-    setEditedQuestion((prev: any) => ({
-      ...prev,
-      option: {
-        ...prev.option,
-        [key]: value,
-      },
-    }));
-  };
-
   const handleEditFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
@@ -201,6 +195,10 @@ const ActionDetailExam = ({
       }));
     }
   };
+
+  // Handle question submission
+  const [createQuestionMutation] = useCreateQuestionMutation();
+  const [updateQuestionMutation] = useUpdateQuestionMutation();
 
   const handleSubmitCreate = async () => {
     try {
@@ -256,7 +254,7 @@ const ActionDetailExam = ({
         }
       });
 
-      const response = await questionServices.create({
+      const response = await createQuestionMutation({
         examId,
         partId,
         data: formData,
@@ -312,7 +310,7 @@ const ActionDetailExam = ({
         });
       }
 
-      const response = await questionServices.update({
+      const response = await updateQuestionMutation({
         examId,
         partId,
         questionId: editedQuestion.id,

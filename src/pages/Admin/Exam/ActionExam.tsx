@@ -4,7 +4,10 @@ import CommonModal from "../../../components/common/Modal";
 import { useGetSubjectsQuery } from "../../../services/subjectServices";
 import { useForm } from "react-hook-form";
 import { toast } from "react-hot-toast";
-import { examServices } from "../../../services/examServices";
+import {
+  useCreateExamMutation,
+  useUpdateExamMutation,
+} from "../../../services/examServices";
 
 interface ExamModalProps {
   isOpen: boolean;
@@ -34,6 +37,10 @@ const ExamAction: React.FC<ExamModalProps> = ({
 
   const [errorDetail, setErrorDetail] = useState("");
 
+  // RTK Query mutation hooks
+  const [createExam, { isLoading: isCreating }] = useCreateExamMutation();
+  const [updateExam, { isLoading: isUpdating }] = useUpdateExamMutation();
+
   useEffect(() => {
     if (data) {
       reset({
@@ -47,34 +54,31 @@ const ExamAction: React.FC<ExamModalProps> = ({
 
   const handleClose = () => {
     onCloseModal();
-    reset({ name: "", subject_id: "1" }); // Gọi reset khi đóng modal
+    reset({ name: "", subject_id: "1" }); // reset form khi đóng modal
   };
 
   const sendRequest = async (formData: ExamType) => {
     try {
       const payload = {
         ...formData,
-        skillType: Number(formData.subject_id), // Đảm bảo skillType là số
+        skillType: Number(formData.subject_id), // đảm bảo skillType là số
       };
 
       if (data?.id) {
-        const res = await examServices.update({ ...payload, id: data.id });
-        if (res.status === 200) {
-          toast.success("Cập nhật bài thi thành công!");
-        }
+        await updateExam({ ...payload, id: data.id }).unwrap();
+        toast.success("Cập nhật bài thi thành công!");
       } else {
-        const res = await examServices.create(payload);
-        if (res.status === 201) {
-          toast.success("Tạo bài thi thành công!");
-        }
+        await createExam(payload).unwrap();
+        toast.success("Tạo bài thi thành công!");
       }
+
       onSuccess();
       onCloseModal();
       setErrorDetail("");
     } catch (error: any) {
       console.error("Lỗi khi gửi yêu cầu:", error);
-      setErrorDetail(error.response.data.message);
-      toast.error(error.response?.data?.message || "Đã xảy ra lỗi");
+      setErrorDetail(error?.data?.message || "Đã xảy ra lỗi");
+      toast.error(error?.data?.message || "Đã xảy ra lỗi");
     }
   };
 
@@ -84,7 +88,7 @@ const ExamAction: React.FC<ExamModalProps> = ({
       key={data?.id ?? "new"}
       isOpen={isOpen}
       title={data ? "Cập nhật bài thi" : "Tạo bài thi"}
-      description="Tạo/cập nhật thông tin chi tiết cho bài thi bài thi."
+      description="Tạo/cập nhật thông tin chi tiết cho bài thi."
       fields={[
         {
           name: "name",

@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, memo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { questionServices } from "../../../services/questionServices";
 import PageBreadcrumb from "../../../components/common/PageBreadCrumb";
 import ComponentCard from "../../../components/common/ComponentCard";
 import {
@@ -13,7 +12,6 @@ import {
   Button,
   IconButton,
   Typography,
-  Box,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -22,12 +20,16 @@ import {
 import { useNavigate } from "react-router";
 import { useLocation } from "react-router";
 import { useQueryString } from "../../../hooks/useQueryString";
-import { examServices } from "../../../services/examServices";
-import { partServices } from "../../../services/partServices";
 import { IoIosAdd } from "react-icons/io";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { IoArrowBack } from "react-icons/io5";
 import ActionDetailExam from "./ActionDetailExam";
+import { useGetExamsQuery } from "../../../services/examServices";
+import { useGetPartsQuery } from "../../../services/partServices";
+import {
+  useDeleteQuestionMutation,
+  useGetQuestionsQuery,
+} from "../../../services/questionServices";
 
 interface Question {
   title: string;
@@ -38,14 +40,6 @@ interface Question {
   elements?: File[];
   global_order: number;
   display_order: number;
-}
-
-interface QuestionGroup {
-  title: string;
-  description?: string;
-  type_group: number;
-  questions: Question[];
-  elements?: File[];
 }
 
 // Memoized Question Component
@@ -261,34 +255,22 @@ const DetailExam = () => {
   }, [examId, partId, queryClient]);
 
   // Fetch exam and part data
-  const { data: examData, isLoading: isExamLoading } = useQuery({
-    queryKey: ["exam", examId],
-    queryFn: () => examServices.get({ all: true }),
-    enabled: !!examId,
+  const { data: examData, isLoading: isExamLoading } = useGetExamsQuery({
+    all: true,
   });
 
-  const { data: partData, isLoading: isPartLoading } = useQuery({
-    queryKey: ["part", partId],
-    queryFn: () => partServices.get(),
-    enabled: !!partId,
-  });
+  const { data: partData, isLoading: isPartLoading } = useGetPartsQuery();
 
   const exam = examData?.data?.find((e: any) => e.id === Number(examId));
+
   const part = partData?.find((p: any) => p.id === Number(partId));
 
   // Fetch questions data
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["questions", examId, partId, page, limit],
-    queryFn: () =>
-      questionServices.get({
-        examId: Number(examId),
-        partId: Number(partId),
-        page,
-        limit,
-      }),
-    enabled: !!examId && !!partId,
-    staleTime: 0,
-    cacheTime: 0,
+  const { data, isLoading, isError } = useGetQuestionsQuery({
+    examId: Number(examId),
+    partId: Number(partId),
+    page,
+    limit,
   });
 
   // Memoize sorted questions
@@ -326,17 +308,27 @@ const DetailExam = () => {
     setIsDeleteDialogOpen(true);
   };
 
+  const [deleteQuestionMutation] = useDeleteQuestionMutation();
   const handleConfirmDelete = async () => {
     if (!questionToDelete) return;
 
     try {
-      await questionServices.delete(questionToDelete.id);
+      await deleteQuestionMutation(questionToDelete.id);
       queryClient.invalidateQueries(["questions", examId, partId]);
       setIsDeleteDialogOpen(false);
       setQuestionToDelete(null);
     } catch (error) {
       console.error("Error deleting question:", error);
     }
+  };
+
+  // Xử lý thông tin các nhóm
+  const [modalGroupData, setModalGroupData] = useState(false);
+  const [selectedGroupData, setSelectedGroupData] = useState<any>(null);
+
+  const handleEditGroup = (group: any) => {
+    setSelectedGroupData(group);
+    setModalGroupData(true);
   };
 
   return (

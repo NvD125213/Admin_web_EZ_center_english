@@ -4,7 +4,7 @@ import { store } from "../stores";
 import { setCredentials, logout } from "../stores/auth/authSlice";
 
 export const axiosInstance = axios.create({
-  baseURL: "https://envidi.io.vn/",
+  baseURL: "https://envidi.io.vn/api/",
 });
 
 axiosInstance.interceptors.request.use((config) => {

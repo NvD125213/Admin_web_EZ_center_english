@@ -12,6 +12,8 @@ import { weekdayApi } from "../services/weekdayServices";
 import consultantApi from "../services/consultantServices";
 import { partApi } from "../services/partServices";
 import { statisticalApi } from "../services/statisticalServices";
+import { examApi } from "../services/examServices";
+import { questionApi } from "../services/questionServices";
 import authReducer from "./auth/authSlice";
 export const store = configureStore({
   reducer: {
@@ -29,6 +31,8 @@ export const store = configureStore({
     [weekdayApi.reducerPath]: weekdayApi.reducer,
     [statisticalApi.reducerPath]: statisticalApi.reducer,
     [partApi.reducerPath]: partApi.reducer,
+    [examApi.reducerPath]: examApi.reducer,
+    [questionApi.reducerPath]: questionApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
@@ -44,7 +48,9 @@ export const store = configureStore({
       weekdayApi.middleware,
       statisticalApi.middleware,
       consultantApi.middleware,
-      partApi.middleware
+      partApi.middleware,
+      examApi.middleware,
+      questionApi.middleware
     ),
 });
 

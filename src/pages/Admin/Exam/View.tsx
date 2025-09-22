@@ -25,10 +25,16 @@ import {
 import { useNavigate } from "react-router";
 import { useModal } from "../../../hooks/useModal";
 import toast from "react-hot-toast";
-import { examServices } from "../../../services/examServices";
+import {
+  useGetExamsBySubjectQuery,
+  useGetExamsQuery,
+  useDeleteExamMutation,
+} from "../../../services/examServices";
+import { examApi } from "../../../services/examServices";
 import ExamAction from "./ActionExam";
+import { useDispatch } from "react-redux";
 import ComponentCard from "../../../components/common/ComponentCard";
-import { partServices } from "../../../services/partServices";
+import { useGetPartsQuery } from "../../../services/partServices";
 import { PencilIcon } from "../../../icons";
 import { RiDeleteBinLine } from "react-icons/ri";
 
@@ -36,12 +42,6 @@ const columns: { key: keyof ExamType; label: string }[] = [
   { key: "id", label: "Mã bài thi" },
   { key: "name", label: "Tên bài thi" },
   { key: "subject_name", label: "Chủ đề thi" },
-];
-
-const partColumns: { key: keyof PartType; label: string }[] = [
-  { key: "id", label: "Mã part" },
-  { key: "name", label: "Tên part" },
-  { key: "order", label: "Thứ tự" },
 ];
 
 const ExamPage = () => {
@@ -58,15 +58,12 @@ const ExamPage = () => {
   const [selectedExam, setSelectedExam] = useState<ExamType | undefined>(
     undefined
   );
+  const { data: parts = [], isLoading: isLoadingPart } = useGetPartsQuery();
   const [selectedExamForPart, setSelectedExamForPart] = useState<
     ExamType | undefined
   >(undefined);
-  // const [value, setValue] = useState("");
   const [isSubjectLoading, setIsSubjectLoading] = useState(false);
-  // const handleChangeSelect = (event: any) => {
-  //   setValue(event.target.value);
-  // };
-
+  const dispatch = useDispatch();
   // Sync state with query string changes
   useEffect(() => {
     const newPage = Number(queryString.page) || 1;
@@ -85,38 +82,30 @@ const ExamPage = () => {
   }, [navigate, queryString.page, queryString.limit]);
 
   //   Fetch data
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["exams", page, limit, subject?.id],
-    queryFn: () => {
-      if (subject?.id) {
-        return examServices.getExamsBySubject(Number(subject.id));
-      } else {
-        return examServices.get({ all: true });
-      }
-    },
-    cacheTime: 10000,
-    keepPreviousData: true,
-  });
+  const { data, isLoading, isError, error } = subject?.id
+    ? useGetExamsBySubjectQuery(Number(subject.id))
+    : useGetExamsQuery({ all: true });
+
   useEffect(() => {
     if (!isLoading && data && Array.isArray(data.data)) {
       if (data.data.length === 0) {
         setErrorDetail("Không có dữ liệu");
       } else {
-        setErrorDetail(""); // Clear error nếu có dữ liệu
+        setErrorDetail("");
       }
     }
   }, [data, isLoading]);
   const totalPages = data?.totalPages || 1;
 
   //Prefetch next page for faster navigation
+
+  const prefetchExams = examApi.usePrefetch("getExams");
+
   useEffect(() => {
     if (page < totalPages) {
-      queryClient.prefetchQuery({
-        queryKey: ["exams", page + 1, limit],
-        queryFn: () => examServices.get({ page: page + 1, limit }),
-      });
+      prefetchExams({ page: page + 1, limit }, { force: true });
     }
-  }, [page, limit, totalPages, queryClient]);
+  }, [page, limit, totalPages, prefetchExams]);
 
   const handleChange = (event: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
@@ -135,17 +124,22 @@ const ExamPage = () => {
     queryClient.invalidateQueries(["exams", page, limit]);
   };
 
-  const handleBulkDelete = async (id: any) => {
-    const confirm = window.confirm(
+  // Xóa bài thi
+  const [deleteExam] = useDeleteExamMutation();
+
+  const handleBulkDelete = async (id: number) => {
+    const confirmDelete = window.confirm(
       `Bạn có chắc chắn muốn xóa bài thi đã chọn không?`
     );
-    if (!confirm) return;
+    if (!confirmDelete) return;
 
     try {
-      await examServices.delete(id);
+      await deleteExam(id).unwrap();
       toast.success(`Xóa ${selectedIds.length} bài thi thành công!`);
-      queryClient.invalidateQueries(["exams", page, limit]);
-    } catch (error: any) {
+
+      // Invalidate (refetch) danh sách exams
+      dispatch(examApi.util.invalidateTags(["Exam"]));
+    } catch (error) {
       console.error("Lỗi khi xóa nhiều bài thi:", error);
       toast.error("Đã xảy ra lỗi khi xóa bài thi. Vui lòng thử lại!");
     }
@@ -153,33 +147,6 @@ const ExamPage = () => {
 
   const { data: subjectsData } = useGetSubjectsQuery({ all: true });
   const subjects = subjectsData?.data || [];
-
-  const [parts, setParts] = useState<PartType[]>([]);
-
-  const fetchParts = async () => {
-    try {
-      setIsLoadingPart(true);
-      const response = await partServices.get();
-      // Kiểm tra và xử lý response
-      if (Array.isArray(response)) {
-        setParts(response);
-      } else if (response.data && Array.isArray(response.data)) {
-        setParts(response.data);
-      } else {
-        console.error("Unexpected response format:", response);
-        setParts([]);
-      }
-    } catch (error) {
-      console.error("Error fetching parts:", error);
-      setParts([]);
-    } finally {
-      setIsLoadingPart(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchParts();
-  }, []);
 
   // Xử lý khi thay đổi chủ đề để xem danh sách bài thi
   const handleSubjectChange = async (event: SelectChangeEvent) => {
@@ -225,21 +192,18 @@ const ExamPage = () => {
   const [newPartName, setNewPartName] = useState("");
   const [modalPart, setModalPart] = useState(false);
   const [createPart] = useCreatePartMutation();
-  const [isLoadingPart, setIsLoadingPart] = useState(false);
+
   const handleAddPart = async () => {
     try {
-      setIsLoadingPart(true);
-      const response = await createPart({ name: newPartName });
+      const response = await createPart({ name: newPartName }).unwrap();
+      console.log("Part created:", response);
+
+      toast.success("Tạo part thành công!");
       setModalPart(false);
       setNewPartName("");
-      await toast.success(response.data.message);
-      // Gọi lại fetchParts để cập nhật danh sách
-      await fetchParts();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating part:", error);
-      toast.error("Có lỗi xảy ra khi tạo part");
-    } finally {
-      setIsLoadingPart(false);
+      toast.error(error?.data?.message || "Có lỗi xảy ra khi tạo part");
     }
   };
 
@@ -321,7 +285,7 @@ const ExamPage = () => {
                   onClick: (row) => handleOpenPartModal(row as ExamType),
                 },
               ]}
-              onDelete={(id) => handleBulkDelete(id)}
+              onDelete={(id) => handleBulkDelete(Number(id))}
               data={data?.data}
             />
           )}

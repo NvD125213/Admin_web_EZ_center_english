@@ -1,6 +1,6 @@
 import DropzoneComponent from "../../../components/form/form-elements/DropZone";
 import { readExcelFile } from "../../../helper/ExcelReader";
-import { questionServices } from "../../../services/questionServices";
+import { useUploadExcelMutation } from "../../../services/questionServices";
 import toast from "react-hot-toast";
 // import { useNavigate } from "react-router";
 
@@ -19,12 +19,8 @@ const UploadExcel = () => {
 
     if (data) {
       try {
-        const promise = questionServices.uploadExcel({
-          file: {
-            detailQuestions: data.detailQuestions,
-            examAndSubject: data.examAndSubject,
-          },
-        });
+        const [uploadExcel] = useUploadExcelMutation();
+        const promise = uploadExcel({ file: data }).unwrap();
 
         toast.promise(promise, {
           loading: "Đang tải lên dữ liệu...",
