@@ -1,9 +1,24 @@
 import { useEffect, useState } from "react";
-import { ExamType } from "../../../types";
-import CommonModal from "../../../components/common/Modal";
-import { useGetSubjectsQuery } from "../../../services/subjectServices";
-import { useForm } from "react-hook-form";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Button,
+  Box,
+  Typography,
+  FormHelperText,
+  CircularProgress,
+} from "@mui/material";
+import { useForm, Controller } from "react-hook-form";
 import { toast } from "react-hot-toast";
+import { ExamType } from "../../../types";
+import { useGetSubjectsQuery } from "../../../services/subjectServices";
 import {
   useCreateExamMutation,
   useUpdateExamMutation,
@@ -41,27 +56,41 @@ const ExamAction: React.FC<ExamModalProps> = ({
   const [createExam, { isLoading: isCreating }] = useCreateExamMutation();
   const [updateExam, { isLoading: isUpdating }] = useUpdateExamMutation();
 
+  const isLoading = isCreating || isUpdating;
+
   useEffect(() => {
     if (data) {
       reset({
         name: data.name,
-        subject_id: data.subject_id,
+        subject_id: String(data.subject_id), // Giữ dạng string để match với Select value
       });
     } else {
       reset({ name: "", subject_id: "1" });
     }
-  }, [data, reset, onCloseModal]);
+  }, [data, reset]);
 
   const handleClose = () => {
     onCloseModal();
-    reset({ name: "", subject_id: "1" }); // reset form khi đóng modal
+    reset({ name: "", subject_id: "1" });
+    setErrorDetail("");
   };
 
   const sendRequest = async (formData: ExamType) => {
     try {
+      // Debug: Log form data trước khi xử lý
+      console.log("Form data nhận được:", formData);
+
+      // Ensure subject_id is included and converted to number
+      if (!formData.subject_id) {
+        toast.error("Vui lòng chọn chủ đề bài thi");
+        return;
+      }
+
       const payload = {
-        ...formData,
-        skillType: Number(formData.subject_id), // đảm bảo skillType là số
+        name: formData.name,
+        subject_id: Number(formData.subject_id),
+        // Remove skillType if backend doesn't expect it
+        // skillType: Number(formData.subject_id),
       };
 
       if (data?.id) {
@@ -73,55 +102,116 @@ const ExamAction: React.FC<ExamModalProps> = ({
       }
 
       onSuccess();
-      onCloseModal();
-      setErrorDetail("");
+      handleClose();
     } catch (error: any) {
       console.error("Lỗi khi gửi yêu cầu:", error);
+      console.error("Error response:", error.data);
       setErrorDetail(error?.data?.message || "Đã xảy ra lỗi");
       toast.error(error?.data?.message || "Đã xảy ra lỗi");
     }
   };
 
   return (
-    <CommonModal
-      errorDetail={errorDetail}
-      key={data?.id ?? "new"}
-      isOpen={isOpen}
-      title={data ? "Cập nhật bài thi" : "Tạo bài thi"}
-      description="Tạo/cập nhật thông tin chi tiết cho bài thi."
-      fields={[
-        {
-          name: "name",
-          type: "text",
-          label: "Nhập tên bài thi",
-          register: register("name", {
-            required: "Tên bài thi là bắt buộc",
-            minLength: {
-              value: 2,
-              message: "Tên phải có ít nhất 2 ký tự",
-            },
-          }),
-          placeholder: "Nhập tên bài thi",
-          error: errors.name?.message,
-        },
-        {
-          name: "subject_id",
-          label: "Chủ đề bài thi",
-          type: "select",
-          control: control,
-          options: subjects.map((sub) => ({
-            label: sub.name,
-            value: String(sub.id),
-            key: sub.id,
-          })),
-          register: register("subject_id"),
-          error: errors.subject_id?.message,
-        },
-      ]}
+    <Dialog
+      open={isOpen}
       onClose={handleClose}
-      onSubmit={handleSubmit(sendRequest)}
-      submitText={data?.id ? "Lưu thay đổi" : "Thêm"}
-    />
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: { borderRadius: 2 },
+      }}>
+      <DialogTitle>
+        <Typography variant="h6" component="div">
+          {data ? "Cập nhật bài thi" : "Tạo bài thi"}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          Tạo/cập nhật thông tin chi tiết cho bài thi.
+        </Typography>
+      </DialogTitle>
+
+      <form onSubmit={handleSubmit(sendRequest)}>
+        <DialogContent>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 3, pt: 1 }}>
+            {/* Error Message */}
+            {errorDetail && (
+              <Typography color="error" variant="body2">
+                {errorDetail}
+              </Typography>
+            )}
+
+            {/* Tên bài thi */}
+            <TextField
+              fullWidth
+              label="Tên bài thi"
+              placeholder="Nhập tên bài thi"
+              variant="outlined"
+              error={!!errors.name}
+              helperText={errors.name?.message}
+              {...register("name", {
+                required: "Tên bài thi là bắt buộc",
+                minLength: {
+                  value: 2,
+                  message: "Tên phải có ít nhất 2 ký tự",
+                },
+              })}
+            />
+
+            {/* Chủ đề bài thi */}
+            <Controller
+              name="subject_id"
+              control={control}
+              rules={{ required: "Chủ đề là bắt buộc" }}
+              render={({ field, fieldState: { error } }) => (
+                <FormControl fullWidth error={!!error}>
+                  <InputLabel id="subject-select-label">
+                    Chủ đề bài thi
+                  </InputLabel>
+                  <Select
+                    labelId="subject-select-label"
+                    label="Chủ đề bài thi"
+                    value={field.value || "1"}
+                    onChange={(e) => field.onChange(e.target.value)}
+                    onBlur={field.onBlur}
+                    name={field.name}>
+                    {subjects.map((subject) => (
+                      <MenuItem key={subject.id} value={String(subject.id)}>
+                        {subject.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {error && <FormHelperText>{error.message}</FormHelperText>}
+                </FormControl>
+              )}
+            />
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ p: 3, pt: 2 }}>
+          <Button onClick={handleClose} variant="outlined" disabled={isLoading}>
+            Hủy
+          </Button>
+
+          {/* Debug button - remove this in production */}
+          <Button
+            onClick={handleSubmit((data) =>
+              console.log("Current form data:", data)
+            )}
+            variant="text"
+            size="small"
+            sx={{ mr: 1 }}>
+            Debug
+          </Button>
+
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={isLoading}
+            startIcon={isLoading ? <CircularProgress size={16} /> : null}>
+            {data?.id ? "Lưu thay đổi" : "Thêm"}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 };
 

@@ -1,6 +1,4 @@
-import { axiosInstance } from "../utils/http";
 import { ExamType } from "../types";
-import { EXAM_API } from "../constants";
 import { baseQueryWithReauth } from "./baseQuery";
 import { createApi } from "@reduxjs/toolkit/query/react";
 
@@ -24,15 +22,16 @@ export const examApi = createApi({
       query: (data) => ({
         url: "/exam",
         method: "POST",
-        data,
+        body: data,
       }),
       invalidatesTags: [{ type: "Exam" }],
     }),
+
     updateExam: builder.mutation<ExamType, ExamType>({
       query: (data) => ({
         url: `/exam/${data.id}`,
         method: "PUT",
-        data,
+        body: data,
       }),
       invalidatesTags: [{ type: "Exam" }],
     }),

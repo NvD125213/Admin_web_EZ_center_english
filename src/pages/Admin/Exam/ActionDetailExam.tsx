@@ -26,7 +26,7 @@ import toast from "react-hot-toast";
 interface Question {
   title: string;
   description?: string;
-  option: string[];
+  option: { [key: string]: string }; // Changed from string[] to object
   correct_option: string;
   score: number;
   elements?: File[];
@@ -72,7 +72,7 @@ const ActionDetailExam = ({
       {
         title: "",
         description: "",
-        option: ["", "", "", ""],
+        option: { A: "", B: "", C: "", D: "" }, // Changed to object format
         correct_option: "A",
         score: 1,
         elements: [],
@@ -87,8 +87,20 @@ const ActionDetailExam = ({
 
   useEffect(() => {
     if (mode === "edit" && question) {
+      // Convert array options to object format if needed
+      let optionObj = question.option;
+      if (Array.isArray(question.option)) {
+        optionObj = {
+          A: question.option[0] || "",
+          B: question.option[1] || "",
+          C: question.option[2] || "",
+          D: question.option[3] || "",
+        };
+      }
+
       setEditedQuestion({
         ...question,
+        option: optionObj,
         elements: question.elements || [],
       });
     }
@@ -102,7 +114,7 @@ const ActionDetailExam = ({
         {
           title: "",
           description: "",
-          option: ["", "", "", ""],
+          option: { A: "", B: "", C: "", D: "" }, // Changed to object format
           correct_option: "A",
           score: 1,
           elements: [],
@@ -134,7 +146,7 @@ const ActionDetailExam = ({
 
   const handleOptionChange = (
     questionIndex: number,
-    optionIndex: number,
+    optionKey: string, // Changed from optionIndex to optionKey
     value: string
   ) => {
     setGroup((prev) => ({
@@ -143,9 +155,7 @@ const ActionDetailExam = ({
         i === questionIndex
           ? {
               ...q,
-              option: q.option.map((opt, j) =>
-                j === optionIndex ? value : opt
-              ),
+              option: { ...q.option, [optionKey]: value }, // Updated to use object format
             }
           : q
       ),
@@ -186,6 +196,13 @@ const ActionDetailExam = ({
     }));
   };
 
+  const handleEditOptionChange = (optionKey: string, value: string) => {
+    setEditedQuestion((prev: any) => ({
+      ...prev,
+      option: { ...prev.option, [optionKey]: value },
+    }));
+  };
+
   const handleEditFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
@@ -202,7 +219,6 @@ const ActionDetailExam = ({
   const { refetch: refetchCloudinarySignature } =
     useCloudinaryUploadSignatureQuery({ examId, partId });
 
-  // Sửa: handleSubmitCreate không nhận tham số, dùng trực tiếp biến scope
   const handleSubmitCreate = async () => {
     try {
       setIsSubmitting(true);
@@ -284,7 +300,6 @@ const ActionDetailExam = ({
         elements: uploadedGroupElements,
         questions: questionsWithUploadedElements,
       };
-      console.log("Payload gửi lên backend:", payload);
 
       // 5. Gửi request tạo câu hỏi
       await createQuestionMutation({
@@ -352,22 +367,14 @@ const ActionDetailExam = ({
         uploadedElements = editedQuestion.elements;
       }
 
-      // 2. Chuẩn bị payload
+      // 2. Chuẩn bị payload - option is already in object format
       const formData = {
         title: editedQuestion.title,
         description: editedQuestion.description || "",
         correct_option: editedQuestion.correct_option,
         score: editedQuestion.score,
         global_order: editedQuestion.global_order,
-        option: Array.isArray(editedQuestion.option)
-          ? editedQuestion.option.reduce(
-              (acc: any, value: string, index: number) => {
-                acc[String.fromCharCode(65 + index)] = value;
-                return acc;
-              },
-              {}
-            )
-          : editedQuestion.option,
+        option: editedQuestion.option, // Already in object format
         elements: uploadedElements,
       };
 
@@ -479,17 +486,15 @@ const ActionDetailExam = ({
           />
 
           <div className="space-y-2">
-            {question.option.map((opt, optIndex) => (
+            {Object.entries(question.option).map(([key, value]) => (
               <TextField
-                key={optIndex}
+                key={key}
                 InputProps={{ sx: { borderRadius: 0 } }}
                 fullWidth
-                label={`Đáp án ${String.fromCharCode(65 + optIndex)}`}
-                value={opt}
+                label={`Đáp án ${key}`}
+                value={value}
                 sx={{ mb: 2 }}
-                onChange={(e) =>
-                  handleOptionChange(index, optIndex, e.target.value)
-                }
+                onChange={(e) => handleOptionChange(index, key, e.target.value)}
               />
             ))}
           </div>
@@ -503,9 +508,9 @@ const ActionDetailExam = ({
                 onChange={(e) =>
                   handleQuestionChange(index, "correct_option", e.target.value)
                 }>
-                {question.option.map((_, i) => (
-                  <MenuItem key={i} value={String.fromCharCode(65 + i)}>
-                    {String.fromCharCode(65 + i)}
+                {Object.keys(question.option).map((key) => (
+                  <MenuItem key={key} value={key}>
+                    {key}
                   </MenuItem>
                 ))}
               </Select>
@@ -559,16 +564,6 @@ const ActionDetailExam = ({
   const renderEditForm = () => {
     if (!editedQuestion) return null;
 
-    // Convert options to array format for the form if it's an object
-    const optionsArray = Array.isArray(editedQuestion.option)
-      ? editedQuestion.option
-      : [
-          editedQuestion.option.A || "",
-          editedQuestion.option.B || "",
-          editedQuestion.option.C || "",
-          editedQuestion.option.D || "",
-        ];
-
     return (
       <div className="space-y-6 mt-4">
         <TextField
@@ -592,19 +587,14 @@ const ActionDetailExam = ({
         />
 
         <div className="space-y-2">
-          {optionsArray.map((value: string, index: number) => (
+          {Object.entries(editedQuestion.option || {}).map(([key, value]) => (
             <TextField
-              key={index}
+              key={key}
               fullWidth
-              label={`Đáp án ${String.fromCharCode(65 + index)}`}
-              value={value}
+              label={`Đáp án ${key}`}
+              value={value as string}
               sx={{ mb: 2 }}
-              onChange={(e) => {
-                // Update the options array
-                const newOptions = [...optionsArray];
-                newOptions[index] = e.target.value;
-                handleEditQuestionChange("option", newOptions);
-              }}
+              onChange={(e) => handleEditOptionChange(key, e.target.value)}
               InputProps={{ sx: { borderRadius: 0 } }}
             />
           ))}
@@ -620,7 +610,7 @@ const ActionDetailExam = ({
               onChange={(e) =>
                 handleEditQuestionChange("correct_option", e.target.value)
               }>
-              {["A", "B", "C", "D"].map((key) => (
+              {Object.keys(editedQuestion.option || {}).map((key) => (
                 <MenuItem key={key} value={key}>
                   {key}
                 </MenuItem>
